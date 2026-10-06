@@ -1,0 +1,83 @@
+<h3>Module 1: First model in an hour</h3>
+<p><strong>Project:</strong> train an image classifier on a small public dataset. <strong>Time:</strong> about 5 hours core, plus about 3 hours for the stretch challenge.</p>
+<p><strong>Done when:</strong> the model trains, the loss goes down each epoch, and you report accuracy on a held-out test set.</p>
+
+<h4>Notes (about 10 minutes)</h4>
+<ul>
+<li>A <strong>tensor</strong> is an array that can live on a GPU. Most deep learning code is tensor manipulation.</li>
+<li>A <strong>dataset</strong> returns one example. A <strong>DataLoader</strong> groups examples into batches and can shuffle them.</li>
+<li>A <strong>model</strong> maps inputs to outputs. A <strong>loss function</strong> scores how wrong the output is. Lower is better.</li>
+<li>The <strong>training loop</strong> repeats four steps on every batch: forward pass, compute loss, backward pass, optimizer step.</li>
+<li><code>loss.backward()</code> computes the gradient of the loss for every weight. <code>optimizer.step()</code> uses those gradients to update the weights.</li>
+<li>Call <code>optimizer.zero_grad()</code> each step, or gradients pile up from earlier batches.</li>
+<li>Always evaluate on data the model never trained on. Training accuracy alone is misleading.</li>
+<li>The dataset used here, Fashion-MNIST, has 60,000 training and 10,000 test grayscale images (28 by 28 pixels) in 10 clothing classes.</li>
+</ul>
+
+<h4>Exercise 1: check your hardware (10 minutes)</h4>
+<p>Pick the device and print it. Check: it prints <code>cuda</code> in a GPU runtime.</p>
+<pre><code>import torch
+device = "cuda" if torch.cuda.is_available() else "cpu"
+print("Using device:", device)</code></pre>
+
+<h4>Exercise 2: load and look at the data (30 minutes)</h4>
+<p>Download Fashion-MNIST, wrap it in DataLoaders, and display 8 images with their labels. Check: you can say what one batch looks like (its shape and label values).</p>
+<pre><code>from torch.utils.data import DataLoader
+from torchvision import datasets, transforms
+
+tfm = transforms.ToTensor()
+train_ds = datasets.FashionMNIST("data", train=True, download=True, transform=tfm)
+test_ds = datasets.FashionMNIST("data", train=False, download=True, transform=tfm)
+train_dl = DataLoader(train_ds, batch_size=64, shuffle=True)
+test_dl = DataLoader(test_ds, batch_size=256)
+
+x, y = next(iter(train_dl))
+print(x.shape, y[:10])   # TODO: what do these numbers mean?
+# TODO: use matplotlib to show 8 images from x with their labels</code></pre>
+
+<h4>Exercise 3: build and train the model (2 to 3 hours)</h4>
+<p>Fill in every <code>TODO</code>. Check: the loss printed each epoch goes down.</p>
+<pre><code>from torch import nn
+
+model = nn.Sequential(
+    nn.Flatten(),
+    # TODO: Linear layer from 28*28 inputs to 128 outputs
+    # TODO: ReLU activation
+    # TODO: Linear layer from 128 to 10 outputs (one per class)
+).to(device)
+
+loss_fn = nn.CrossEntropyLoss()
+# TODO: create an Adam optimizer for model.parameters() with lr=1e-3
+
+for epoch in range(5):
+    model.train()
+    for x, y in train_dl:
+        x, y = x.to(device), y.to(device)
+        # TODO 1: forward pass to get predictions
+        # TODO 2: compute the loss with loss_fn
+        # TODO 3: zero the gradients
+        # TODO 4: backward pass
+        # TODO 5: optimizer step
+    print(f"epoch {epoch + 1}: last batch loss {loss.item():.3f}")</code></pre>
+
+<h4>Exercise 4: evaluate honestly (1 hour)</h4>
+<p>Write an <code>evaluate(dl)</code> function that switches to evaluation mode, turns off gradient tracking with <code>torch.no_grad()</code>, and returns accuracy. Report accuracy on the test set, then show 5 images the model got wrong with the true and predicted labels. Check: test accuracy is roughly 85% or higher.</p>
+
+<h4>Exercise 5 (stretch): change one thing</h4>
+<p>Train on CIFAR-10 instead, or make the model deeper, and try to beat your own accuracy. Write down what you changed and what happened.</p>
+
+<h4>Hint ladder</h4>
+<ol>
+<li>Official PyTorch docs and a web search.</li>
+<li>The loop order is always: forward, loss, zero_grad, backward, step.</li>
+<li><code>model(x)</code> gives predictions, <code>loss_fn(predictions, y)</code> gives the loss, <code>optimizer.zero_grad()</code> clears gradients, <code>loss.backward()</code> computes new ones, <code>optimizer.step()</code> updates the weights. Accuracy is <code>(model(x).argmax(1) == y).float().mean()</code> averaged over all test batches.</li>
+<li>Reference solution: attempt on your own first, then ask for it in the course forum.</li>
+</ol>
+
+<h4>Before you submit</h4>
+<ul>
+<li>Notebook runs top to bottom without errors, and loss goes down each epoch.</li>
+<li>Test accuracy is reported, with 5 wrong predictions shown.</li>
+<li>Take the Module 1 quiz (pass mark 4 of 5).</li>
+<li>Push the notebook and a three-line reflection (what you built, what broke, what you would change) to <code>module-01</code> in your portfolio repo, then submit the link in the assignment below.</li>
+</ul>
