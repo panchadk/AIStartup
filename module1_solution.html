@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Module 1: Reference solution</title>
+<style>
+  :root { --navy: #1F3864; --ink: #222222; --bg: #FFFFFF; --code-bg: #F3F6FA; --warn-bg: #FFF4E5; --warn-edge: #E08A00; }
+  body { font-family: Arial, Helvetica, sans-serif; max-width: 860px; margin: 0 auto; padding: 24px; line-height: 1.6; color: var(--ink); background: var(--bg); }
+  h3 { color: var(--navy); border-bottom: 3px solid var(--navy); padding-bottom: 6px; }
+  h4 { color: var(--navy); margin-top: 28px; }
+  strong { color: var(--navy); }
+  code { font-family: Consolas, "Courier New", monospace; background: var(--code-bg); padding: 1px 4px; border-radius: 3px; }
+  pre { background: var(--code-bg); border-left: 4px solid var(--navy); padding: 14px; overflow-x: auto; border-radius: 4px; }
+  pre code { background: none; padding: 0; }
+  .banner { background: var(--warn-bg); border-left: 4px solid var(--warn-edge); padding: 12px 16px; border-radius: 4px; margin: 16px 0; }
+  @media (prefers-color-scheme: dark) {
+    :root { --navy: #8FB4F0; --ink: #E6E6E6; --bg: #14181F; --code-bg: #1E2530; --warn-bg: #3A2C12; --warn-edge: #E0A040; }
+  }
+</style>
+</head>
+<body>
+<h3>Module 1: Reference solution</h3>
+<div class="banner"><strong>Try it yourself first.</strong> Open this page only after your own honest attempt. Reading the answer first skips the learning. If you are stuck, use the hint ladder in the notebook, then come here to compare.</div>
+<p>Your code does not need to match line for line. If your self-check cells pass and your accuracy is 85% or higher, your solution is correct.</p>
+
+<h4>Step 2 question: what does <code>torch.Size([64, 1, 28, 28])</code> mean?</h4>
+<p>It is the shape of one batch of images: <strong>64</strong> images in the batch, <strong>1</strong> channel (grayscale; a color image would have 3), each <strong>28</strong> pixels tall and <strong>28</strong> pixels wide. The labels are shaped <code>[64]</code>, one class number from 0 to 9 per image.</p>
+<h4>Step 2: show 8 images (Exercise 2)</h4>
+<p>Loop over 8 axes, draw each image, and use the class name as the title. <code>x[i].squeeze()</code> removes the channel dimension so the image is 28 by 28.</p>
+<pre><code>import matplotlib.pyplot as plt
+
+fig, axes = plt.subplots(1, 8, figsize=(16, 2.5))
+for i, ax in enumerate(axes):
+    ax.imshow(x[i].squeeze(), cmap=&quot;gray&quot;)
+    ax.set_title(CLASSES[y[i]], fontsize=8)
+    ax.axis(&quot;off&quot;)
+plt.show()</code></pre>
+<h4>Step 3: build the model</h4>
+<p>Three layers after <code>Flatten</code>: 784 inputs to 128 hidden units, a ReLU, then 128 to 10 outputs, one per class. The ReLU is what makes the network nonlinear.</p>
+<pre><code>model = nn.Sequential(
+    nn.Flatten(),
+    nn.Linear(28 * 28, 128),
+    nn.ReLU(),
+    nn.Linear(128, 10),
+).to(device)</code></pre>
+<h4>Step 4: the optimizer</h4>
+<p>Adam is a strong default. It needs the model's parameters so it knows what to update.</p>
+<pre><code>optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)</code></pre>
+<h4>Step 5: the training loop</h4>
+<p>The five steps, in order: forward pass, loss, zero the gradients, backward pass, optimizer step. Only the five lines inside the inner loop change.</p>
+<pre><code>loss = None
+history = []   # last-batch loss of each epoch
+
+for epoch in range(5):
+    model.train()
+    for x, y in train_dl:
+        x, y = x.to(device), y.to(device)
+        preds = model(x)              # 1. forward pass
+        loss = loss_fn(preds, y)      # 2. compute the loss
+        optimizer.zero_grad()         # 3. clear old gradients
+        loss.backward()               # 4. backward pass
+        optimizer.step()              # 5. update the weights
+
+    if loss is not None:
+        history.append(loss.item())
+        print(f&quot;epoch {epoch + 1}: last batch loss {loss.item():.3f}&quot;)
+    else:
+        print(&quot;loss is still None. Fill in the training steps above.&quot;)
+        break</code></pre>
+<h4>Step 6: evaluate</h4>
+<p>Switch to evaluation mode, turn off gradient tracking, count correct predictions across all batches, and divide by the total. Expect roughly 85% to 88%.</p>
+<pre><code>def evaluate(dl):
+    model.eval()
+    correct, total = 0, 0
+    with torch.no_grad():
+        for x, y in dl:
+            x, y = x.to(device), y.to(device)
+            correct += (model(x).argmax(1) == y).sum().item()
+            total += y.size(0)
+    return correct / total if total else 0.0
+
+test_acc = evaluate(test_dl)
+print(f&quot;Test accuracy: {test_acc:.3f}&quot;)</code></pre>
+<h4>Step 7: show 5 mistakes</h4>
+<p>Collect wrong predictions batch by batch, then plot the first five with the true and predicted class names.</p>
+<pre><code>model.eval()
+wrong = []
+with torch.no_grad():
+    for x, y in test_dl:
+        x, y = x.to(device), y.to(device)
+        preds = model(x).argmax(1)
+        mask = preds != y
+        for img, true, pred in zip(x[mask], y[mask], preds[mask]):
+            wrong.append((img.cpu(), true.item(), pred.item()))
+        if len(wrong) &gt;= 5:
+            break
+
+fig, axes = plt.subplots(1, 5, figsize=(12, 3))
+for ax, (img, true, pred) in zip(axes, wrong[:5]):
+    ax.imshow(img.squeeze(), cmap=&quot;gray&quot;)
+    ax.set_title(f&quot;true: {CLASSES[true]}\npred: {CLASSES[pred]}&quot;, fontsize=8)
+    ax.axis(&quot;off&quot;)
+plt.show()</code></pre>
+<h4>Common mistakes and what they look like</h4>
+<ul>
+<li><strong>Forgot <code>optimizer.zero_grad()</code>:</strong> the loss jumps around or gets worse, because gradients pile up from earlier batches.</li>
+<li><strong>Wrong order of the five steps:</strong> the loss does not go down. The order is forward, loss, zero_grad, backward, step.</li>
+<li><strong>Forgot <code>.to(device)</code> on <code>x</code> and <code>y</code>:</strong> an error saying tensors are on different devices (cuda and cpu).</li>
+<li><strong>Wrong layer sizes:</strong> an error like "mat1 and mat2 shapes cannot be multiplied". The first Linear takes 784 inputs and the last gives 10 outputs.</li>
+<li><strong>Added a softmax before <code>CrossEntropyLoss</code>:</strong> accuracy is lower than expected. The loss already includes it, so give it the raw outputs.</li>
+<li><strong>Forgot <code>model.eval()</code> or <code>torch.no_grad()</code> when evaluating:</strong> slower and uses more memory. It matters much more once models have dropout or batch norm.</li>
+<li><strong>Accuracy below 85%:</strong> check that you trained for all 5 epochs and that <code>evaluate</code> divides by the total number of test images, not the number of batches.</li>
+</ul>
+
+<h4>What to do next</h4>
+<ul>
+<li>Complete the three-line reflection and push your notebook to your portfolio repo.</li>
+<li>Take the Module 1 quiz in Moodle.</li>
+<li>Try the stretch challenge: change one thing and beat your own accuracy.</li>
+</ul>
+
+</body>
+</html>
