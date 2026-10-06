@@ -1,0 +1,37 @@
+// Module 3 quiz - Deep Learning for AI Startups
+$CATEGORY: $course$/Module 3
+
+::M3 Q1:: Which split should you use to tune hyperparameters? {
+~Test set
+~Training set only
+=Validation set#Tune on validation data. Keep the test set for one final, honest score.
+~Any, it does not matter
+}
+
+::M3 Q2:: Which is a sign of overfitting? {
+~Training and validation loss both high
+~Both losses equal
+~Loss is exactly zero on validation
+=Training loss low, validation loss rising#The model is memorizing the training data, so it does worse on new data.
+}
+
+::M3 Q3:: What does early stopping do? {
+~Stops the GPU
+=Stops training when validation performance stops improving#It ends training once validation stops improving and keeps the best checkpoint.
+~Removes layers
+~Doubles the batch size
+}
+
+::M3 Q4:: Why track experiments? {
+=To compare runs and reproduce results#Logging settings and metrics lets you compare runs fairly and recreate the best one.
+~To reduce model size
+~To speed up inference
+~To label data
+}
+
+::M3 Q5:: Which technique reduces overfitting? {
+~Using the test set for tuning
+~Removing validation data
+=Dropout#Dropout randomly switches off units during training so the model cannot rely on any single one.
+~Training longer with no checks
+}

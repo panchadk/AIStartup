@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Module 3 lecture notes: Build your own training loop</title>
+<style>
+  :root { --navy:#1F3864;--ink:#222222;--bg:#FFFFFF;--code-bg:#F3F6FA;--hl-bg:#FFF4E5;--accent:#D9730D;--muted:#8A94A6; --muted-text:#555555; --good:#2E7D32; }
+  body { font-family: Arial, Helvetica, sans-serif; max-width: 860px; margin: 0 auto; padding: 24px; line-height: 1.65; color: var(--ink); background: var(--bg); }
+  h1 { color: var(--navy); margin-bottom: 4px; }
+  h2 { color: var(--navy); border-bottom: 3px solid var(--navy); padding-bottom: 6px; margin-top: 40px; }
+  h3 { color: var(--navy); margin-top: 26px; }
+  strong { color: var(--navy); }
+  a { color: var(--navy); }
+  .meta { color: var(--muted-text); margin-top: 0; }
+  code { font-family: Consolas, "Courier New", monospace; background: var(--code-bg); padding: 1px 4px; border-radius: 3px; }
+  pre { background: var(--code-bg); border-left: 4px solid var(--navy); padding: 14px; overflow-x: auto; border-radius: 4px; }
+  pre code { background: none; padding: 0; }
+  .toc { background: var(--code-bg); border-radius: 6px; padding: 12px 20px; }
+  .toc ol { margin: 6px 0; }
+  .note { background: var(--hl-bg); border-left: 4px solid var(--accent); padding: 12px 16px; border-radius: 4px; margin: 18px 0; }
+  .key { background: var(--code-bg); border-left: 4px solid var(--navy); padding: 12px 16px; border-radius: 4px; margin: 18px 0; }
+  figure { margin: 26px 0; }
+  figcaption { font-size: .9em; color: var(--muted-text); text-align: center; margin-top: 6px; }
+  svg.fig { width: 100%; height: auto; max-width: 760px; display: block; margin: 0 auto; }
+  table { border-collapse: collapse; width: 100%; margin: 14px 0; }
+  th, td { border: 1px solid var(--muted); padding: 7px 10px; text-align: left; vertical-align: top; }
+  th { background: var(--code-bg); color: var(--navy); }
+  details { background: var(--code-bg); border-radius: 6px; padding: 8px 14px; margin: 10px 0; }
+  summary { cursor: pointer; font-weight: bold; color: var(--navy); }
+  .nav { display: flex; justify-content: space-between; gap: 12px; margin-top: 40px; padding-top: 14px; border-top: 1px solid var(--muted); flex-wrap: wrap; }
+
+svg .box{fill:var(--code-bg);stroke:var(--navy);stroke-width:2}
+svg .box2{fill:var(--bg);stroke:var(--navy);stroke-width:2}
+svg .hl{fill:var(--hl-bg);stroke:var(--accent);stroke-width:2}
+svg .t{fill:var(--ink);font-family:Arial,Helvetica,sans-serif;font-size:14px}
+svg .tb{font-weight:bold}
+svg .ts{font-size:12px}
+svg .tl{font-size:16px}
+svg .tn{fill:var(--navy)}
+svg .ta{fill:var(--accent)}
+svg .tm{fill:var(--muted)}
+svg .ln{stroke:var(--navy);stroke-width:2.5;fill:none}
+svg .la{stroke:var(--accent);stroke-width:2.5;fill:none}
+svg .lg{stroke:var(--muted);stroke-width:1;fill:none;opacity:.55}
+svg .ax{stroke:var(--ink);stroke-width:1.5;fill:none}
+svg .fw{stroke:var(--navy);stroke-width:2.5;fill:none}
+svg .bw{stroke:var(--accent);stroke-width:2.5;fill:none}
+svg .dash{stroke-dasharray:6 4}
+svg .mN{fill:var(--navy)}
+svg .mA{fill:var(--accent)}
+svg .dotN{fill:var(--navy)}
+svg .dotA{fill:var(--accent)}
+svg .node{fill:var(--bg);stroke:var(--navy);stroke-width:2}
+
+  @media (prefers-color-scheme: dark) {
+    :root { --navy:#8FB4F0;--ink:#E6E6E6;--bg:#14181F;--code-bg:#1E2530;--hl-bg:#3A2C12;--accent:#F0A040;--muted:#6B778C; --muted-text:#B5BCC8; --good:#66BB6A; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Module 3: Build your own training loop</h1>
+<p class="meta">Lecture notes with diagrams. Reading time: about 20 minutes. Read once, then start the notebook, and come back here when a self-check fails.</p>
+
+<div class="toc"><strong>In these notes</strong>
+<ol>
+<li><a href="#big">The big picture</a></li>
+<li><a href="#splits">Three splits of your data</a></li>
+<li><a href="#curves">Reading the loss curves</a></li>
+<li><a href="#fit">The loop as a function</a></li>
+<li><a href="#overfit">Fighting overfitting</a></li>
+<li><a href="#track">Tracking experiments and running sweeps</a></li>
+<li><a href="#terms">Key terms</a>, <a href="#pitfalls">pitfalls</a>, and <a href="#check">check yourself</a></li>
+</ol></div>
+
+<h2 id="big">1. The big picture</h2>
+<p>In Module 1 you trained one model once and looked at its accuracy. Real work is different. You try many settings, compare them, and need to <strong>trust the results</strong>.</p>
+<p>This module builds the machinery for that: a reusable training function, honest evaluation, ways to stop a model from memorizing, and a record of every experiment. You will write your own <code>fit()</code> function, the same shape of function that libraries such as PyTorch Lightning and Keras provide.</p>
+
+<h2 id="splits">2. Three splits of your data</h2>
+<p>A model can look excellent on data it has already seen. To know how it will do on <em>new</em> data, you keep some data hidden. You need three piles, not two:</p>
+<figure>
+<svg class="fig" viewBox="0 0 760 310" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Training, validation, and test sets and what each is used for"><defs><marker id="aN31" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA31" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><rect x="20" y="40" width="220" height="80" rx="8" class="box"/><text x="130.0" y="76.0" class="t tb" text-anchor="middle" >Training set</text><text x="130.0" y="94.0" class="t ts" text-anchor="middle" >2,000 images</text><line x1="130" y1="120" x2="130" y2="160" class="fw" marker-end="url(#aN31)"/><text x="130" y="182" class="t tb" text-anchor="middle" >learns the weights</text><text x="130" y="204" class="t ts" text-anchor="middle" >used on every step</text><text x="130" y="224" class="t ts tm" text-anchor="middle" >like: practice problems</text><rect x="270" y="40" width="220" height="80" rx="8" class="box"/><text x="380.0" y="76.0" class="t tb" text-anchor="middle" >Validation set</text><text x="380.0" y="94.0" class="t ts" text-anchor="middle" >2,000 images</text><line x1="380" y1="120" x2="380" y2="160" class="fw" marker-end="url(#aN31)"/><text x="380" y="182" class="t tb" text-anchor="middle" >tunes your choices</text><text x="380" y="204" class="t ts" text-anchor="middle" >used after every epoch</text><text x="380" y="224" class="t ts tm" text-anchor="middle" >like: a practice exam</text><rect x="520" y="40" width="220" height="80" rx="8" class="hl"/><text x="630.0" y="76.0" class="t tb" text-anchor="middle" >Test set</text><text x="630.0" y="94.0" class="t ts" text-anchor="middle" >10,000 images</text><line x1="630" y1="120" x2="630" y2="160" class="bw" marker-end="url(#aA31)"/><text x="630" y="182" class="t tb" text-anchor="middle" >the final grade</text><text x="630" y="204" class="t ts" text-anchor="middle" >used ONCE, at the very end</text><text x="630" y="224" class="t ts tm" text-anchor="middle" >like: the real exam</text><text x="380" y="22" class="t tb tn" text-anchor="middle" >One pile of labelled data, three jobs</text><text x="380" y="268" class="t" text-anchor="middle" >Choices you tune on validation: learning rate, model size, dropout, when to stop.</text><text x="380" y="292" class="t ta tb" text-anchor="middle" >Never tune on the test set. Once you do, it is just a second validation set.</text></svg>
+<figcaption>Each split has a different job. In this module: 2,000 training images, 2,000 validation images, and the 10,000 test images.</figcaption>
+</figure>
+<ul>
+<li><strong>Training set:</strong> the model learns its weights from this.</li>
+<li><strong>Validation set:</strong> you use it to make decisions: the learning rate, the model size, how much dropout, when to stop.</li>
+<li><strong>Test set:</strong> your final exam. You look at it <strong>once</strong>.</li>
+</ul>
+<div class="note"><strong>Why not just two piles?</strong> Every time you pick the setting that scores best on a set, you slightly fit your choices to that set. After many choices, its score is too optimistic. If you tune on the test set, you have no clean exam left. That is why the validation set exists.</div>
+<p>We use only 2,000 training images on purpose. With so little data, overfitting is easy to see, which makes it a good place to learn.</p>
+
+<h2 id="curves">3. Reading the loss curves</h2>
+<p>Plot the training loss and validation loss against epochs. Their shapes tell you what is wrong.</p>
+<figure>
+<svg class="fig" viewBox="0 0 760 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Underfitting, a good fit, and overfitting shown by training and validation loss curves"><defs><marker id="aN32" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA32" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><text x="135" y="28" class="t tb tn" text-anchor="middle" >Underfitting</text><line x1="30" y1="240" x2="245" y2="240" class="ax"/><line x1="30" y1="240" x2="30" y2="50" class="ax"/><path d="M30,80 C80,95 150,100 240,102" class="ln"/><path d="M30,92 C80,105 150,110 240,112" class="la"/><text x="135" y="262" class="t ts tm" text-anchor="middle" >epochs</text><text x="135" y="284" class="t ts" text-anchor="middle" >both losses stay high</text><text x="385" y="28" class="t tb tn" text-anchor="middle" >Good fit</text><line x1="280" y1="240" x2="495" y2="240" class="ax"/><line x1="280" y1="240" x2="280" y2="50" class="ax"/><path d="M280,80 C330,170 400,195 490,200" class="ln"/><path d="M280,92 C330,175 400,190 490,196" class="la"/><text x="385" y="262" class="t ts tm" text-anchor="middle" >epochs</text><text x="385" y="284" class="t ts" text-anchor="middle" >both low and close together</text><text x="635" y="28" class="t tb tn" text-anchor="middle" >Overfitting</text><line x1="530" y1="240" x2="745" y2="240" class="ax"/><line x1="530" y1="240" x2="530" y2="50" class="ax"/><path d="M530,80 C580,180 650,220 740,226" class="ln"/><path d="M530,92 C580,170 630,190 660,190 S710,170 740,150" class="la"/><text x="635" y="262" class="t ts tm" text-anchor="middle" >epochs</text><text x="635" y="284" class="t ts" text-anchor="middle" >validation turns upward</text><line x1="250" y1="312" x2="280" y2="312" class="ln"/><text x="288" y="316" class="t ts" text-anchor="start" >training loss</text><line x1="400" y1="312" x2="430" y2="312" class="la"/><text x="438" y="316" class="t ts" text-anchor="start" >validation loss</text></svg>
+<figcaption>The three shapes to learn. The fix depends on which one you have.</figcaption>
+</figure>
+<table>
+<tr><th>What you see</th><th>Diagnosis</th><th>What to try</th></tr>
+<tr><td>Both losses high and flat</td><td>Underfitting</td><td>Bigger model, train longer, higher learning rate</td></tr>
+<tr><td>Both low and close</td><td>Good fit</td><td>You are done, or try small improvements</td></tr>
+<tr><td>Training falls, validation rises</td><td>Overfitting</td><td>More data, dropout, weight decay, early stopping</td></tr>
+</table>
+<p>Note: with dropout on, the training metrics are measured while units are switched off, so training accuracy looks a little lower than it really is. Always judge the model by the validation numbers.</p>
+
+<h2 id="fit">4. The loop as a function</h2>
+<p>In Module 1 the training loop was a few lines in a notebook. Now you turn it into one reusable function, <code>fit()</code>, that you will use for the rest of the course.</p>
+<pre><code>def fit(model, train_loader, val_loader, loss_fn, optimizer, epochs, device,
+        patience=None, ckpt_path="best.pt", scheduler=None, log_fn=None):
+    ...
+    return history</code></pre>
+<figure>
+<svg class="fig" viewBox="0 0 760 520" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Flowchart of the fit function: train, validate, log, checkpoint, early stopping"><defs><marker id="aN33" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA33" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><rect x="280" y="10" width="200" height="46" rx="8" class="box"/><text x="380.0" y="38.0" class="t tb" text-anchor="middle" >train_one_epoch</text><rect x="280" y="86" width="200" height="46" rx="8" class="box"/><text x="380.0" y="114.0" class="t tb" text-anchor="middle" >evaluate on validation</text><rect x="280" y="162" width="200" height="46" rx="8" class="box"/><text x="380.0" y="190.0" class="t tb" text-anchor="middle" >log the metrics</text><line x1="380" y1="56" x2="380" y2="84" class="fw" marker-end="url(#aN33)"/><line x1="380" y1="132" x2="380" y2="160" class="fw" marker-end="url(#aN33)"/><line x1="380" y1="208" x2="380" y2="226" class="fw" marker-end="url(#aN33)"/><polygon points="380,227 490,265 380,303 270,265" class="box"/><text x="380" y="262" class="t ts tb" text-anchor="middle" >validation loss</text><text x="380" y="278" class="t ts tb" text-anchor="middle" >improved?</text><line x1="490" y1="265" x2="558" y2="265" class="fw" marker-end="url(#aN33)"/><text x="524" y="256" class="t ts tn" text-anchor="middle" >yes</text><rect x="560" y="240" width="180" height="50" rx="8" class="hl"/><text x="650.0" y="261.0" class="t tb" text-anchor="middle" >save checkpoint</text><text x="650.0" y="279.0" class="t ts" text-anchor="middle" >counter = 0</text><line x1="270" y1="265" x2="222" y2="265" class="fw" marker-end="url(#aN33)"/><text x="246" y="256" class="t ts tn" text-anchor="middle" >no</text><rect x="40" y="240" width="180" height="50" rx="8" class="box"/><text x="130.0" y="261.0" class="t tb" text-anchor="middle" >counter + 1</text><text x="130.0" y="279.0" class="t ts" text-anchor="middle" >no progress this epoch</text><line x1="130" y1="290" x2="130" y2="322" class="fw" marker-end="url(#aN33)"/><polygon points="130,323 230,357 130,391 30,357" class="box"/><text x="130" y="354" class="t ts tb" text-anchor="middle" >counter &gt;=</text><text x="130" y="370" class="t ts tb" text-anchor="middle" >patience?</text><line x1="130" y1="391" x2="130" y2="420" class="fw" marker-end="url(#aN33)"/><text x="144" y="408" class="t ts tn" text-anchor="start" >yes</text><rect x="40" y="421" width="180" height="44" rx="8" class="hl"/><text x="130.0" y="448.0" class="t tb" text-anchor="middle" >stop training</text><path d="M230,357 H380 V428" class="fw" marker-end="url(#aN33)"/><text x="300" y="348" class="t ts tn" text-anchor="middle" >no</text><rect x="300" y="430" width="160" height="40" rx="8" class="box"/><text x="380.0" y="446.0" class="t tb" text-anchor="middle" >next epoch</text><text x="380.0" y="464.0" class="t ts" text-anchor="middle" >back to the top</text><path d="M650,290 V450 H462" class="bw" marker-end="url(#aA33)"/><line x1="130" y1="465" x2="130" y2="488" class="fw" marker-end="url(#aN33)"/><text x="380" y="505" class="t tb" text-anchor="middle" >After the loop: load the best checkpoint back into the model.</text></svg>
+<figcaption>What fit() does each epoch. The right branch keeps the best model; the left branch counts epochs without progress.</figcaption>
+</figure>
+<ul>
+<li><strong>Checkpoint:</strong> a saved copy of the model's weights. You save one whenever the validation loss improves, so the best model is never lost.</li>
+<li><strong>Early stopping:</strong> if the validation loss has not improved for <code>patience</code> epochs in a row, stop. Why wait several epochs? Validation loss is noisy, and one bad epoch does not mean overfitting has started.</li>
+<li><strong>Restore the best:</strong> after the loop, load the best checkpoint back. Otherwise you would keep the last (often worse) weights.</li>
+<li><strong>History:</strong> a dictionary of lists, one value per epoch, so you can plot and compare runs.</li>
+<li><strong><code>log_fn</code>:</strong> a function you can pass in. <code>fit</code> calls it each epoch, and that is how an experiment tracker plugs in without changing the loop.</li>
+</ul>
+<div class="key"><strong>A detail that trips people up:</strong> average the loss over <em>examples</em>, not over batches. The last batch is often smaller, so multiply each batch's mean loss by its size and divide by the total number of examples at the end.</div>
+
+<h2 id="overfit">5. Fighting overfitting</h2>
+<figure>
+<svg class="fig" viewBox="0 0 760 315" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four ways to reduce overfitting: dropout, weight decay, early stopping, more data"><defs><marker id="aN34" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA34" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><rect x="15" y="30" width="175" height="235" rx="8" class="box"/><text x="102" y="56" class="t tb tn" text-anchor="middle" >Dropout</text><text x="102" y="180" class="t ts" text-anchor="middle" >randomly switch off</text><text x="102" y="197" class="t ts" text-anchor="middle" >units while training</text><text x="102" y="226" class="t ts tm" text-anchor="middle" >the model cannot lean</text><text x="102" y="243" class="t ts tm" text-anchor="middle" >on any single unit</text><rect x="200" y="30" width="175" height="235" rx="8" class="box"/><text x="287" y="56" class="t tb tn" text-anchor="middle" >Weight decay</text><text x="287" y="180" class="t ts" text-anchor="middle" >gently pull weights</text><text x="287" y="197" class="t ts" text-anchor="middle" >toward zero</text><text x="287" y="226" class="t ts tm" text-anchor="middle" >smaller weights give</text><text x="287" y="243" class="t ts tm" text-anchor="middle" >a smoother model</text><rect x="385" y="30" width="175" height="235" rx="8" class="box"/><text x="472" y="56" class="t tb tn" text-anchor="middle" >Early stopping</text><text x="472" y="180" class="t ts" text-anchor="middle" >stop when validation</text><text x="472" y="197" class="t ts" text-anchor="middle" >stops improving</text><text x="472" y="226" class="t ts tm" text-anchor="middle" >keep the best</text><text x="472" y="243" class="t ts tm" text-anchor="middle" >checkpoint</text><rect x="570" y="30" width="175" height="235" rx="8" class="box"/><text x="657" y="56" class="t tb tn" text-anchor="middle" >More data</text><text x="657" y="180" class="t ts" text-anchor="middle" >or augment: flip,</text><text x="657" y="197" class="t ts" text-anchor="middle" >crop, shift</text><text x="657" y="226" class="t ts tm" text-anchor="middle" >the best cure, when</text><text x="657" y="243" class="t ts tm" text-anchor="middle" >you can get it</text><circle cx="38" cy="110" r="11" class="node"/><circle cx="68" cy="110" r="11" class="lg dash" style="opacity:1"/><circle cx="98" cy="110" r="11" class="node"/><circle cx="128" cy="110" r="11" class="lg dash" style="opacity:1"/><circle cx="158" cy="110" r="11" class="node"/><rect x="235" y="75" width="22" height="70" class="box2"/><rect x="269" y="100" width="22" height="45" class="box2"/><rect x="303" y="117" width="22" height="28" class="box2"/><path d="M410,85 C 430,140 450,150 470,148 S 520,115 540,95" class="la"/><line x1="470" y1="75" x2="470" y2="150" class="lg dash" style="opacity:1"/><text x="470" y="72" class="t ts ta" text-anchor="middle" >stop</text><rect x="595" y="85" width="50" height="50" class="box2"/><polygon points="595,85 625,85 595,115" class="dotN"/><line x1="650" y1="110" x2="672" y2="110" class="fw" marker-end="url(#aN34)"/><rect x="676" y="85" width="50" height="50" class="box2"/><polygon points="726,85 696,85 726,115" class="dotN"/><text x="380" y="296" class="t tb" text-anchor="middle" >Combine them, and change one thing at a time so you know what helped.</text></svg>
+<figcaption>Four tools. They work well together.</figcaption>
+</figure>
+<ul>
+<li><strong>Dropout:</strong> during training, randomly set a fraction of unit outputs to 0 (for example 30% to 50%). The network cannot rely on any single unit. At evaluation time dropout is turned off, which is why <code>model.eval()</code> matters.</li>
+<li><strong>Weight decay:</strong> a small penalty that nudges weights toward zero. Smaller weights give smoother, less memorizing models. Use it with <code>AdamW</code>, typically a value around 0.01 to 0.1.</li>
+<li><strong>Early stopping:</strong> stop when validation stops improving, as in <code>fit()</code>.</li>
+<li><strong>More data or augmentation:</strong> the strongest cure. Augmentation creates new training examples by flipping, cropping or shifting existing ones.</li>
+</ul>
+<h3>Optimizers and the learning rate</h3>
+<p><strong>SGD</strong> takes a step against the gradient. <strong>Adam</strong> adapts the step for each weight and usually works well with little tuning. <strong>AdamW</strong> is Adam with a cleaner version of weight decay, and it is a good default. The <strong>learning rate</strong> is usually the most important setting: too small learns too slowly, too large is unstable.</p>
+<p>A <strong>scheduler</strong> lowers the learning rate during training, for example smoothly to near zero (cosine annealing). Big steps early, careful steps late.</p>
+
+<h2 id="track">6. Tracking experiments and running sweeps</h2>
+<p>After a few runs you forget which settings gave which result. An <strong>experiment tracker</strong> (Weights &amp; Biases, MLflow) records, for every run: the settings, the metrics each epoch, and the final result. You then compare runs side by side.</p>
+<figure>
+<svg class="fig" viewBox="0 0 760 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A mock experiment tracking dashboard with a list of runs and their validation accuracy curves"><defs><marker id="aN36" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA36" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><rect x="10" y="10" width="740" height="320" rx="10" class="box2"/><rect x="10" y="10" width="740" height="34" rx="10" class="box"/><text x="30" y="33" class="t tb tn" text-anchor="start" >Experiment tracker: project dl-startups-module3</text><line x1="250" y1="44" x2="250" y2="330" class="lg" style="opacity:1"/><text x="30" y="70" class="t tb" text-anchor="middle" >Runs</text><circle cx="34" cy="100" r="6" class="dotN"/><text x="48" y="97" class="t ts" text-anchor="start" >lr 0.003, batch 32</text><text x="48" y="113" class="t ts tm" text-anchor="start" >val_acc 0.845</text><circle cx="34" cy="150" r="6" class="dotA"/><text x="48" y="147" class="t ts" text-anchor="start" >lr 0.01, batch 128</text><text x="48" y="163" class="t ts tm" text-anchor="start" >val_acc 0.845</text><circle cx="34" cy="200" r="6" class="dotN"/><text x="48" y="197" class="t ts" text-anchor="start" >lr 0.001, batch 32</text><text x="48" y="213" class="t ts tm" text-anchor="start" >val_acc 0.840</text><circle cx="34" cy="250" r="6" class="dotA"/><text x="48" y="247" class="t ts" text-anchor="start" >lr 0.03, batch 32</text><text x="48" y="263" class="t ts tm" text-anchor="start" >val_acc 0.620</text><text x="270" y="70" class="t tb" text-anchor="middle" >val_acc per epoch</text><line x1="300" y1="290" x2="720" y2="290" class="ax"/><line x1="300" y1="290" x2="300" y2="85" class="ax"/><path d="M300,250 C340,160 400,125 720,112" class="ln" style="stroke-width:3.5"/><path d="M300,255 C350,175 420,140 720,118" class="la" style="stroke-width:2.5"/><path d="M300,262 C360,200 440,150 720,128" class="ln" style="stroke-width:1.5"/><path d="M300,275 C380,265 500,240 720,200" class="la" style="stroke-width:1.5"/><text x="510" y="312" class="t ts tm" text-anchor="middle" >epoch</text><text x="640" y="100" class="t ts tb tn" text-anchor="middle" >best run</text></svg>
+<figcaption>A typical tracker view: a list of runs on the left and their curves on the right. The best run stands out.</figcaption>
+</figure>
+<ul>
+<li><strong>Log:</strong> the config, the metrics each epoch, the seed, and a note about what you changed.</li>
+<li><strong>Seeds:</strong> fix the random seed so a run can be repeated. Differences between runs should come from your settings, not from luck.</li>
+<li><strong>One change at a time:</strong> if you change three things and the score improves, you do not know which one helped.</li>
+</ul>
+<p>A <strong>sweep</strong> runs many settings automatically. You will run a grid: 5 learning rates times 2 batch sizes.</p>
+<figure>
+<svg class="fig" viewBox="0 0 760 335" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Illustrative results of a learning rate sweep for two batch sizes"><defs><marker id="aN35" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA35" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><line x1="70" y1="270" x2="710" y2="270" class="ax"/><line x1="70" y1="270" x2="70" y2="40" class="ax"/><line x1="70" y1="215.0" x2="710" y2="215.0" class="lg"/><text x="60" y="219.0" class="t ts tm" text-anchor="end" >0.6</text><line x1="70" y1="160.00000000000003" x2="710" y2="160.00000000000003" class="lg"/><text x="60" y="164.00000000000003" class="t ts tm" text-anchor="end" >0.7</text><line x1="70" y1="104.99999999999997" x2="710" y2="104.99999999999997" class="lg"/><text x="60" y="108.99999999999997" class="t ts tm" text-anchor="end" >0.8</text><line x1="70" y1="50.0" x2="710" y2="50.0" class="lg"/><text x="60" y="54.0" class="t ts tm" text-anchor="end" >0.9</text><text x="110" y="292" class="t ts" text-anchor="middle" >0.0003</text><text x="245" y="292" class="t ts" text-anchor="middle" >0.001</text><text x="380" y="292" class="t ts" text-anchor="middle" >0.003</text><text x="515" y="292" class="t ts" text-anchor="middle" >0.01</text><text x="650" y="292" class="t ts" text-anchor="middle" >0.03</text><text x="390" y="318" class="t ts tm" text-anchor="middle" >learning rate (log scale)</text><text x="20" y="155" class="t ts tm" text-anchor="middle" transform="rotate(-90 20 155)">validation accuracy</text><path d="M110,105.0 L245,83.0 L380,80.3 L515,88.5 L650,204.0" class="ln"/><circle cx="110" cy="105.0" r="5" class="dotN"/><circle cx="245" cy="83.0" r="5" class="dotN"/><circle cx="380" cy="80.3" r="5" class="dotN"/><circle cx="515" cy="88.5" r="5" class="dotN"/><circle cx="650" cy="204.0" r="5" class="dotN"/><path d="M110,160.0 L245,110.5 L380,83.0 L515,80.3 L650,138.0" class="la"/><circle cx="110" cy="160.0" r="5" class="dotA"/><circle cx="245" cy="110.5" r="5" class="dotA"/><circle cx="380" cy="83.0" r="5" class="dotA"/><circle cx="515" cy="80.3" r="5" class="dotA"/><circle cx="650" cy="138.0" r="5" class="dotA"/><line x1="520" y1="30" x2="548" y2="30" class="ln"/><text x="556" y="34" class="t ts" text-anchor="start" >batch size 32</text><line x1="520" y1="50" x2="548" y2="50" class="la"/><text x="556" y="54" class="t ts" text-anchor="start" >batch size 128</text><text x="110" y="245" class="t ts tm" text-anchor="middle" >too small:</text><text x="110" y="260" class="t ts tm" text-anchor="middle" >too little progress</text><text x="650" y="238" class="t ts tm" text-anchor="middle" >too large:</text><text x="650" y="253" class="t ts tm" text-anchor="middle" >unstable</text><text x="330" y="70" class="t ts tb tn" text-anchor="middle" >sweet spot</text></svg>
+<figcaption>An illustrative learning rate sweep. Your real numbers will differ, but the overall shape is typical.</figcaption>
+</figure>
+<div class="note"><strong>Is the winner really better?</strong> With 2,000 validation images, an accuracy of 84% is only known to about plus or minus 0.8 percentage points (one standard error is roughly sqrt(0.84 x 0.16 / 2000) = 0.8%). So two runs that differ by half a point are probably tied. Prefer a setting that is good across neighbouring values over one lucky peak.</div>
+<p>Finally, remember the exam rule: after choosing the best setting <em>using validation</em>, score it on the test set <strong>once</strong>. Report that number.</p>
+
+<h2 id="terms">7. Key terms</h2>
+<table>
+<tr><th>Term</th><th>Plain meaning</th></tr>
+<tr><td>Validation set</td><td>Held-out data used to make decisions while building</td></tr>
+<tr><td>Test set</td><td>Held-out data used once, for the final score</td></tr>
+<tr><td>Overfitting</td><td>Doing well on training data but worse on new data</td></tr>
+<tr><td>Regularization</td><td>Anything that reduces overfitting (dropout, weight decay, early stopping)</td></tr>
+<tr><td>Checkpoint</td><td>A saved copy of the model's weights</td></tr>
+<tr><td>Patience</td><td>How many epochs without improvement before stopping</td></tr>
+<tr><td>Hyperparameter</td><td>A setting you choose, such as the learning rate or dropout rate</td></tr>
+<tr><td>Sweep</td><td>Running many settings and comparing them</td></tr>
+<tr><td>Experiment tracker</td><td>A tool that records settings and metrics of each run</td></tr>
+</table>
+
+<h2 id="pitfalls">8. Common pitfalls</h2>
+<ul>
+<li>Tuning on the test set, so the final number is no longer honest.</li>
+<li>Averaging the loss over batches instead of over examples.</li>
+<li>Forgetting <code>model.eval()</code> and <code>torch.no_grad()</code> when validating.</li>
+<li>Forgetting <code>model.train()</code>, so dropout silently stays off.</li>
+<li>Saving the last model instead of the best one.</li>
+<li>Changing several settings at once, then guessing what helped.</li>
+<li>Believing a tiny difference between runs when the validation set is small.</li>
+</ul>
+
+<h2 id="check">9. Check yourself</h2>
+<p>Try each question first, then open the answer.</p>
+<details><summary>Question 1: Training accuracy is 98%, validation 84%, and test 83%. What is happening, and what is your first move?</summary><p>A 14-point gap between training and validation means overfitting. Try dropout, weight decay, early stopping, or more data. The test score being close to validation is a good sign that your choices were honest.</p></details>
+<details><summary>Question 2: You tried 50 settings and report the best validation accuracy, 86%, as your final result. Why is that too optimistic?</summary><p>You picked the winner <em>because</em> it scored highest on that validation set, so part of the score is luck. Score the chosen model once on the test set and report that instead.</p></details>
+<details><summary>Question 3: Early stopping with patience 5 stopped at epoch 14. Which epoch's weights should you keep, and why?</summary><p>The best epoch, which is epoch 9 here (five epochs earlier), where the validation loss was lowest. That is what the saved checkpoint holds, which is why <code>fit()</code> loads it back at the end.</p></details>
+
+<h2>Next steps</h2>
+<ul>
+<li>Open the <a href="https://colab.research.google.com/github/panchadk/AIStartup/blob/main/module3_training_loop.ipynb" target="_blank" rel="noopener">Module 3 notebook in Colab</a> and start building.</li>
+<li>Back to the <a href="https://panchadk.github.io/AIStartup/module3_page.html">Module 3 page</a>.</li>
+</ul>
+<div class="nav"><a href="https://panchadk.github.io/AIStartup/module2_notes.html">&larr; Previous: Module 2 notes</a><span></span></div>
+
+</body>
+</html>

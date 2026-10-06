@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Module 3: Build your own training loop</title>
+<style>
+  :root { --navy: #1F3864; --ink: #222222; --bg: #FFFFFF; --code-bg: #F3F6FA; --warn-bg: #FFF4E5; --warn-edge: #E08A00; }
+  body { font-family: Arial, Helvetica, sans-serif; max-width: 860px; margin: 0 auto; padding: 24px; line-height: 1.6; color: var(--ink); background: var(--bg); }
+  h3 { color: var(--navy); border-bottom: 3px solid var(--navy); padding-bottom: 6px; }
+  h4 { color: var(--navy); margin-top: 28px; }
+  strong { color: var(--navy); }
+  code { font-family: Consolas, "Courier New", monospace; background: var(--code-bg); padding: 1px 4px; border-radius: 3px; }
+  pre { background: var(--code-bg); border-left: 4px solid var(--navy); padding: 14px; overflow-x: auto; border-radius: 4px; }
+  pre code { background: none; padding: 0; }
+  .banner { background: var(--warn-bg); border-left: 4px solid var(--warn-edge); padding: 12px 16px; border-radius: 4px; margin: 16px 0; }
+  @media (prefers-color-scheme: dark) {
+    :root { --navy: #8FB4F0; --ink: #E6E6E6; --bg: #14181F; --code-bg: #1E2530; --warn-bg: #3A2C12; --warn-edge: #E0A040; }
+  }
+</style>
+</head>
+<body>
+<h3>Module 3: Build your own training loop</h3>
+<p><strong>Project:</strong> write a reusable training and validation loop, make a model overfit on purpose, fix it, and track experiments with a 10-run sweep. <strong>Time:</strong> about 8 hours core, plus about 4 hours for the stretch challenge.</p>
+<p><strong>Done when:</strong> your <code>fit()</code> function trains, validates, saves the best checkpoint and can stop early; your regularized model beats the overfit baseline on validation data; and you can explain three changes that improved your validation score.</p>
+<p><a href="https://colab.research.google.com/github/panchadk/AIStartup/blob/main/module3_training_loop.ipynb" target="_blank" rel="noopener"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"></a></p>
+<p><em>Click the button to open the interactive notebook in Google Colab. Choose a GPU runtime, then File, Save a copy in Drive, and work in your own copy.</em></p>
+
+<p><strong>Lecture notes:</strong> <a href="https://panchadk.github.io/AIStartup/module3_notes.html" target="_blank" rel="noopener">read the illustrated notes</a> (about 20 minutes, with diagrams). Read them first, or return to them when you are stuck.</p>
+
+<h4>Notes (about 10 minutes)</h4>
+<ul>
+<li>Split your data three ways. <strong>Train</strong> on the training set, <strong>tune</strong> on the validation set, and use the <strong>test set once</strong> at the end.</li>
+<li><strong>Overfitting</strong> means low training loss but high validation loss. Fight it with more data, augmentation, dropout, weight decay, or early stopping.</li>
+<li><strong>Early stopping</strong> ends training when validation performance stops improving. Keep the best checkpoint, not the last one.</li>
+<li><strong>Adam</strong> is a strong default optimizer. The <strong>learning rate</strong> is usually the most important hyperparameter.</li>
+<li>Log the settings and metrics of every run with an experiment tracker such as Weights &amp; Biases or MLflow, so runs can be compared and reproduced.</li>
+<li>Set random seeds, and change <strong>one thing at a time</strong>, so you know what helped.</li>
+</ul>
+
+<h4>Exercises (all in the notebook)</h4>
+<ol>
+<li><strong>Setup.</strong> Load a small training set (2,000 images), a validation set, and the test set.</li>
+<li><strong>Evaluate.</strong> Write <code>evaluate()</code>. Check: it matches a hand-computed loss, even with uneven batches.</li>
+<li><strong>Train one epoch.</strong> Write <code>train_one_epoch()</code>. Check: loss goes down on an easy problem.</li>
+<li><strong>The full loop.</strong> Write <code>fit()</code> with validation, checkpointing, early stopping, logging and a scheduler hook. Check: six tests on a toy problem.</li>
+<li><strong>Overfit on purpose.</strong> Train a big model on 2,000 images and watch the validation loss turn upward.</li>
+<li><strong>Fix it.</strong> Apply at least two of dropout, weight decay, and early stopping. Check: smaller gap or lower validation loss.</li>
+<li><strong>Track experiments.</strong> Write <code>run_experiment()</code>, with optional Weights &amp; Biases logging.</li>
+<li><strong>Sweep.</strong> Run 10 settings (5 learning rates x 2 batch sizes) and summarize which won and why.</li>
+<li><strong>Final exam.</strong> Score your best model on the test set, once.</li>
+<li><strong>Stretch:</strong> add a learning rate scheduler and compare.</li>
+</ol>
+
+<h4>Hint ladder</h4>
+<ol>
+<li>PyTorch docs and a web search for any function you are unsure about.</li>
+<li>The written hints under each step in the notebook.</li>
+<li>If a self-check fails, read its message carefully. Each one names the most likely mistake.</li>
+<li>Reference solution: open <a href="https://panchadk.github.io/AIStartup/module3_solution.html" target="_blank" rel="noopener">the solution page</a> only after your own honest attempt.</li>
+</ol>
+
+<h4>Before you submit</h4>
+<ul>
+<li>Every self-check cell in the notebook passes.</li>
+<li>Your sweep table shows 10 runs, and you have written your answers to the questions.</li>
+<li>Take the Module 3 quiz (pass mark 4 of 5).</li>
+<li>Push the notebook and a three-line reflection (what you built, what broke, what you would change) to <code>module-03</code> in your portfolio repo, then submit the link in the assignment below.</li>
+</ul>
+
+</body>
+</html>

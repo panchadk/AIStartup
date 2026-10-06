@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Module 3: Reference solution</title>
+<style>
+  :root { --navy: #1F3864; --ink: #222222; --bg: #FFFFFF; --code-bg: #F3F6FA; --warn-bg: #FFF4E5; --warn-edge: #E08A00; }
+  body { font-family: Arial, Helvetica, sans-serif; max-width: 860px; margin: 0 auto; padding: 24px; line-height: 1.6; color: var(--ink); background: var(--bg); }
+  h3 { color: var(--navy); border-bottom: 3px solid var(--navy); padding-bottom: 6px; }
+  h4 { color: var(--navy); margin-top: 28px; }
+  strong { color: var(--navy); }
+  code { font-family: Consolas, "Courier New", monospace; background: var(--code-bg); padding: 1px 4px; border-radius: 3px; }
+  pre { background: var(--code-bg); border-left: 4px solid var(--navy); padding: 14px; overflow-x: auto; border-radius: 4px; }
+  pre code { background: none; padding: 0; }
+  .banner { background: var(--warn-bg); border-left: 4px solid var(--warn-edge); padding: 12px 16px; border-radius: 4px; margin: 16px 0; }
+  @media (prefers-color-scheme: dark) {
+    :root { --navy: #8FB4F0; --ink: #E6E6E6; --bg: #14181F; --code-bg: #1E2530; --warn-bg: #3A2C12; --warn-edge: #E0A040; }
+  }
+</style>
+</head>
+<body>
+<h3>Module 3: Reference solution</h3>
+<div class="banner"><strong>Try it yourself first.</strong> Open this page only after your own honest attempt. If a self-check is failing, read its message again and compare one function at a time. Matching line for line is not required: if every self-check passes, your solution is correct.</div>
+<h4>Step 2: evaluate</h4>
+<p>Weight each batch's mean loss by its size, so the last (smaller) batch does not count too much. <code>model.eval()</code> and <code>torch.no_grad()</code> switch off dropout and gradient tracking.</p>
+<pre><code>def evaluate(model, loader, loss_fn, device):
+    model.eval()
+    total_loss, correct, n = 0.0, 0, 0
+    with torch.no_grad():
+        for x, y in loader:
+            x, y = x.to(device), y.to(device)
+            logits = model(x)
+            total_loss += loss_fn(logits, y).item() * y.size(0)
+            correct += (logits.argmax(1) == y).sum().item()
+            n += y.size(0)
+    return total_loss / n, correct / n</code></pre>
+<h4>Step 3: train one epoch</h4>
+<p>The same five steps as Module 1, plus bookkeeping. <code>model.train()</code> turns dropout on.</p>
+<pre><code>def train_one_epoch(model, loader, loss_fn, optimizer, device):
+    model.train()
+    total_loss, correct, n = 0.0, 0, 0
+    for x, y in loader:
+        x, y = x.to(device), y.to(device)
+        logits = model(x)
+        loss = loss_fn(logits, y)
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        total_loss += loss.item() * y.size(0)
+        correct += (logits.argmax(1) == y).sum().item()
+        n += y.size(0)
+    return total_loss / n, correct / n</code></pre>
+<h4>Step 4: the full fit() loop</h4>
+<p>Read it in the order of the flowchart in the lecture notes. The key details: the learning rate is recorded <em>before</em> <code>scheduler.step()</code>; &quot;improved&quot; means strictly lower than the best so far; the counter resets to 0 on every improvement; and the best weights are loaded back at the end.</p>
+<pre><code>def fit(model, train_loader, val_loader, loss_fn, optimizer, epochs, device,
+        patience=None, ckpt_path=&quot;best.pt&quot;, scheduler=None, log_fn=None):
+    history = {&quot;train_loss&quot;: [], &quot;train_acc&quot;: [], &quot;val_loss&quot;: [], &quot;val_acc&quot;: [], &quot;lr&quot;: []}
+    best_val_loss, best_epoch, bad_epochs = float(&quot;inf&quot;), -1, 0
+    for epoch in range(epochs):
+        tr_loss, tr_acc = train_one_epoch(model, train_loader, loss_fn, optimizer, device)
+        va_loss, va_acc = evaluate(model, val_loader, loss_fn, device)
+        lr = optimizer.param_groups[0][&quot;lr&quot;]
+        if scheduler is not None:
+            scheduler.step()
+
+        for key, value in zip(history, [tr_loss, tr_acc, va_loss, va_acc, lr]):
+            history[key].append(value)
+        if log_fn is not None:
+            log_fn(epoch, {key: history[key][-1] for key in history})
+
+        if va_loss &lt; best_val_loss:
+            best_val_loss, best_epoch, bad_epochs = va_loss, epoch, 0
+            torch.save(model.state_dict(), ckpt_path)
+        else:
+            bad_epochs += 1
+            if patience is not None and bad_epochs &gt;= patience:
+                break
+
+    if best_epoch &gt;= 0:
+        model.load_state_dict(torch.load(ckpt_path, map_location=device))
+    history[&quot;best_epoch&quot;] = best_epoch
+    history[&quot;best_val_loss&quot;] = best_val_loss
+    return history</code></pre>
+<h4>Step 6: regularization settings (one good example)</h4>
+<p>Any two or three of these settings pass the check. Your numbers will differ from run to run and from machine to machine, so judge by the gap and the best validation loss, not by exact values. Training accuracy is measured with dropout switched on, so it looks a little lower than it really is.</p>
+<pre><code>dropout = 0.5
+weight_decay = 0.05
+patience = 5</code></pre>
+<h4>Step 7: run_experiment</h4>
+<p>Three lines build the model, the optimizer, and the logging function; one call runs <code>fit</code>. The <code>wandb.init</code> and <code>wandb.finish</code> pair around it keeps each run separate in the dashboard.</p>
+<pre><code>def run_experiment(config, use_wandb=False):
+    set_seed(config.get(&quot;seed&quot;, 0))
+    train_dl, val_dl, _ = make_loaders(config[&quot;batch_size&quot;])
+
+    model = make_model(config[&quot;hidden&quot;], config[&quot;dropout&quot;])
+    optimizer = torch.optim.AdamW(model.parameters(), lr=config[&quot;lr&quot;], weight_decay=config[&quot;weight_decay&quot;])
+    log_fn = (lambda epoch, metrics: wandb.log(metrics, step=epoch)) if use_wandb else None
+
+    if use_wandb:
+        wandb.init(project=&quot;dl-startups-module3&quot;, config=config)
+
+    hist = fit(model, train_dl, val_dl, loss_fn, optimizer, epochs=config[&quot;epochs&quot;], device=device,
+               patience=config[&quot;patience&quot;], ckpt_path=&quot;run.pt&quot;, log_fn=log_fn)
+
+    if use_wandb:
+        wandb.finish()
+
+    best = hist[&quot;best_epoch&quot;]
+    return {&quot;config&quot;: config, &quot;val_acc&quot;: hist[&quot;val_acc&quot;][best], &quot;val_loss&quot;: hist[&quot;best_val_loss&quot;],
+            &quot;best_epoch&quot;: best, &quot;history&quot;: hist, &quot;model&quot;: model}</code></pre>
+<h4>Step 8: the sweep loop</h4>
+<p>Two nested loops, one run per pair. Changing only the learning rate and batch size keeps the comparison fair.</p>
+<pre><code>for lr in lrs:
+    for bs in batch_sizes:
+        config = {**base, &quot;lr&quot;: lr, &quot;batch_size&quot;: bs}
+        results.append(run_experiment(config, use_wandb=USE_WANDB))</code></pre>
+<h4>Stretch: a learning rate scheduler</h4>
+<p>Cosine annealing lowers the learning rate smoothly toward zero over the run. Build the scheduler after the optimizer and pass it to <code>fit</code>.</p>
+<pre><code>optimizer = torch.optim.AdamW(model.parameters(), lr=3e-3, weight_decay=0.01)
+scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=15)
+hist = fit(model, train_dl, val_dl, loss_fn, optimizer, epochs=15, device=device,
+           patience=5, scheduler=scheduler)
+plt.plot(hist[&quot;lr&quot;]); plt.title(&quot;learning rate per epoch&quot;); plt.show()</code></pre>
+<h4>Sample answers to the written questions</h4>
+<ul>
+<li><strong>Step 5, when did validation loss stop improving?</strong> The printed <code>best epoch</code> tells you, and it is usually early (well before epoch 30). After that, training accuracy keeps climbing toward 100% while validation accuracy stalls or slips. That growing gap is overfitting.</li>
+<li><strong>Step 6, what changed?</strong> With dropout, weight decay and early stopping, the training curve rises more slowly, the validation curve stays closer to it, and training stops soon after the best epoch.</li>
+<li><strong>Step 8, which setting won and why?</strong> Usually a middle learning rate. Too small makes too little progress in 15 epochs, and too large is unstable. The best batch size can differ with the learning rate, because small batches make more, noisier updates per epoch.</li>
+<li><strong>Step 8, are the top runs really different?</strong> Often not. With 2,000 validation images, accuracy has an uncertainty of roughly 0.8 percentage points, so runs within about 1 point of each other cannot be told apart. A fair answer is: &quot;the top three are within noise&quot;.</li>
+<li><strong>Three changes that improved validation score:</strong> for example (1) adding dropout, (2) adding weight decay or early stopping, (3) picking a better learning rate from the sweep.</li>
+</ul>
+
+<h4>Common mistakes and what they look like</h4>
+<ul>
+<li><strong>Averaging the loss over batches instead of over examples:</strong> the <code>evaluate</code> check fails by a small amount, because the last batch is smaller. Multiply each batch loss by its size.</li>
+<li><strong>Forgetting <code>model.eval()</code> or <code>torch.no_grad()</code> in <code>evaluate</code>:</strong> validation metrics are noisy and slower, because dropout is still on and gradients are still tracked.</li>
+<li><strong>Forgetting <code>model.train()</code> in <code>train_one_epoch</code>:</strong> after one evaluation, dropout stays off for training, so regularization quietly does nothing.</li>
+<li><strong>Saving a checkpoint every epoch:</strong> the file holds the <em>last</em> weights, not the best. Save only inside the &quot;improved&quot; branch.</li>
+<li><strong>Not resetting the counter on improvement:</strong> training stops too early. Reset it to 0 whenever validation loss improves.</li>
+<li><strong>Not loading the best checkpoint at the end:</strong> you evaluate the last (overfit) weights. The <code>fit</code> self-check catches this.</li>
+<li><strong>Recording the learning rate after <code>scheduler.step()</code>:</strong> the history is shifted by one epoch.</li>
+<li><strong>Tuning on the test set:</strong> your final number is no longer honest. Use it once, in Step 9.</li>
+<li><strong>Changing several settings at once in the sweep:</strong> you cannot tell what helped. Change one thing at a time.</li>
+<li><strong>Forgetting <code>wandb.finish()</code> between runs:</strong> runs get merged into one confusing chart.</li>
+</ul>
+
+<h4>What to do next</h4>
+<ul>
+<li>Complete the three-line reflection and push your notebook to your portfolio repo.</li>
+<li>Take the Module 3 quiz in Moodle.</li>
+<li>Module 4 hands you five broken notebooks to debug. Your <code>fit()</code> loop and your sense of what healthy curves look like are exactly the tools you need.</li>
+</ul>
+
+</body>
+</html>
