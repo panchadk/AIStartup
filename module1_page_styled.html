@@ -1,3 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Module 1: First model in an hour</title>
+<style>
+  :root {
+    --navy: #1F3864;       /* headings and accents */
+    --ink: #222222;        /* body text */
+    --bg: #FFFFFF;         /* page background */
+    --code-bg: #F3F6FA;    /* code blocks */
+  }
+  body { font-family: Arial, Helvetica, sans-serif; max-width: 860px; margin: 0 auto; padding: 24px; line-height: 1.6; color: var(--ink); background: var(--bg); }
+  h3 { color: var(--navy); border-bottom: 3px solid var(--navy); padding-bottom: 6px; }
+  h4 { color: var(--navy); margin-top: 28px; }
+  strong { color: var(--navy); }
+  code { font-family: Consolas, "Courier New", monospace; background: var(--code-bg); padding: 1px 4px; border-radius: 3px; }
+  pre { background: var(--code-bg); border-left: 4px solid var(--navy); padding: 14px; overflow-x: auto; border-radius: 4px; }
+  pre code { background: none; padding: 0; }
+  @media (prefers-color-scheme: dark) {
+    :root { --navy: #8FB4F0; --ink: #E6E6E6; --bg: #14181F; --code-bg: #1E2530; }
+  }
+</style>
+</head>
+<body>
 <h3>Module 1: First model in an hour</h3>
 <p><strong>Project:</strong> train an image classifier on a small public dataset. <strong>Time:</strong> about 5 hours core, plus about 3 hours for the stretch challenge.</p>
 <p><strong>Done when:</strong> the model trains, the loss goes down each epoch, and you report accuracy on a held-out test set.</p>
@@ -84,3 +110,6 @@ for epoch in range(5):
 <li>Take the Module 1 quiz (pass mark 4 of 5).</li>
 <li>Push the notebook and a three-line reflection (what you built, what broke, what you would change) to <code>module-01</code> in your portfolio repo, then submit the link in the assignment below.</li>
 </ul>
+
+</body>
+</html>
