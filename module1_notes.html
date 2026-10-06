@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Module 1 lecture notes: First model in an hour</title>
+<style>
+  :root { --navy:#1F3864;--ink:#222222;--bg:#FFFFFF;--code-bg:#F3F6FA;--hl-bg:#FFF4E5;--accent:#D9730D;--muted:#8A94A6; --muted-text:#555555; --good:#2E7D32; }
+  body { font-family: Arial, Helvetica, sans-serif; max-width: 860px; margin: 0 auto; padding: 24px; line-height: 1.65; color: var(--ink); background: var(--bg); }
+  h1 { color: var(--navy); margin-bottom: 4px; }
+  h2 { color: var(--navy); border-bottom: 3px solid var(--navy); padding-bottom: 6px; margin-top: 40px; }
+  h3 { color: var(--navy); margin-top: 26px; }
+  strong { color: var(--navy); }
+  a { color: var(--navy); }
+  .meta { color: var(--muted-text); margin-top: 0; }
+  code { font-family: Consolas, "Courier New", monospace; background: var(--code-bg); padding: 1px 4px; border-radius: 3px; }
+  pre { background: var(--code-bg); border-left: 4px solid var(--navy); padding: 14px; overflow-x: auto; border-radius: 4px; }
+  pre code { background: none; padding: 0; }
+  .toc { background: var(--code-bg); border-radius: 6px; padding: 12px 20px; }
+  .toc ol { margin: 6px 0; }
+  .note { background: var(--hl-bg); border-left: 4px solid var(--accent); padding: 12px 16px; border-radius: 4px; margin: 18px 0; }
+  .key { background: var(--code-bg); border-left: 4px solid var(--navy); padding: 12px 16px; border-radius: 4px; margin: 18px 0; }
+  figure { margin: 26px 0; }
+  figcaption { font-size: .9em; color: var(--muted-text); text-align: center; margin-top: 6px; }
+  svg.fig { width: 100%; height: auto; max-width: 760px; display: block; margin: 0 auto; }
+  table { border-collapse: collapse; width: 100%; margin: 14px 0; }
+  th, td { border: 1px solid var(--muted); padding: 7px 10px; text-align: left; vertical-align: top; }
+  th { background: var(--code-bg); color: var(--navy); }
+  details { background: var(--code-bg); border-radius: 6px; padding: 8px 14px; margin: 10px 0; }
+  summary { cursor: pointer; font-weight: bold; color: var(--navy); }
+  .nav { display: flex; justify-content: space-between; gap: 12px; margin-top: 40px; padding-top: 14px; border-top: 1px solid var(--muted); flex-wrap: wrap; }
+
+svg .box{fill:var(--code-bg);stroke:var(--navy);stroke-width:2}
+svg .box2{fill:var(--bg);stroke:var(--navy);stroke-width:2}
+svg .hl{fill:var(--hl-bg);stroke:var(--accent);stroke-width:2}
+svg .t{fill:var(--ink);font-family:Arial,Helvetica,sans-serif;font-size:14px}
+svg .tb{font-weight:bold}
+svg .ts{font-size:12px}
+svg .tl{font-size:16px}
+svg .tn{fill:var(--navy)}
+svg .ta{fill:var(--accent)}
+svg .tm{fill:var(--muted)}
+svg .ln{stroke:var(--navy);stroke-width:2.5;fill:none}
+svg .la{stroke:var(--accent);stroke-width:2.5;fill:none}
+svg .lg{stroke:var(--muted);stroke-width:1;fill:none;opacity:.55}
+svg .ax{stroke:var(--ink);stroke-width:1.5;fill:none}
+svg .fw{stroke:var(--navy);stroke-width:2.5;fill:none}
+svg .bw{stroke:var(--accent);stroke-width:2.5;fill:none}
+svg .dash{stroke-dasharray:6 4}
+svg .mN{fill:var(--navy)}
+svg .mA{fill:var(--accent)}
+svg .dotN{fill:var(--navy)}
+svg .dotA{fill:var(--accent)}
+svg .node{fill:var(--bg);stroke:var(--navy);stroke-width:2}
+
+  @media (prefers-color-scheme: dark) {
+    :root { --navy:#8FB4F0;--ink:#E6E6E6;--bg:#14181F;--code-bg:#1E2530;--hl-bg:#3A2C12;--accent:#F0A040;--muted:#6B778C; --muted-text:#B5BCC8; --good:#66BB6A; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Module 1: First model in an hour</h1>
+<p class="meta">Lecture notes with diagrams. Reading time: about 15 minutes. Read once, then start the notebook, and come back here when you are stuck.</p>
+
+<div class="toc"><strong>In these notes</strong>
+<ol>
+<li><a href="#big">The big picture</a></li>
+<li><a href="#data">Data: tensors, datasets, and DataLoaders</a></li>
+<li><a href="#model">The model: a stack of layers</a></li>
+<li><a href="#loss">The loss: scoring mistakes</a></li>
+<li><a href="#loop">The training loop</a></li>
+<li><a href="#eval">Evaluating honestly</a></li>
+<li><a href="#terms">Key terms</a> and <a href="#pitfalls">common pitfalls</a></li>
+<li><a href="#check">Check yourself</a></li>
+</ol></div>
+
+<h2 id="big">1. The big picture</h2>
+<p>Deep learning means <strong>learning a function from examples</strong>. You show the computer many pictures together with their correct labels. It adjusts a large set of numbers, called <strong>weights</strong>, until its guesses are mostly right.</p>
+<p>In this module the function takes a 28 by 28 picture of a piece of clothing and returns one of 10 classes, such as T-shirt, trouser, or ankle boot. The dataset is called <strong>Fashion-MNIST</strong>.</p>
+<div class="key"><strong>The recipe for the whole course:</strong> data, then a model, then a loss, then a training loop, then honest evaluation. Every module repeats this recipe with something new plugged in.</div>
+
+<h2 id="data">2. Data: tensors, datasets, and DataLoaders</h2>
+<p>A <strong>tensor</strong> is a block of numbers with a shape, like a spreadsheet that can have more than two dimensions. PyTorch tensors can be moved to a GPU, which does many calculations at the same time. That is why training is fast on a GPU.</p>
+<p>One image is a tensor of shape <code>[1, 28, 28]</code>: 1 channel (grayscale), 28 rows, 28 columns. Each pixel is a number between 0 and 1 after <code>ToTensor()</code> converts it.</p>
+<p>A <strong>Dataset</strong> gives you one example at a time. A <strong>DataLoader</strong> groups examples into <strong>batches</strong> and shuffles them each epoch.</p>
+<figure>
+<svg class="fig" viewBox="0 0 760 290" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A dataset feeds a DataLoader that produces batches of shape 64 by 1 by 28 by 28"><defs><marker id="aN12" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA12" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><rect x="10" y="50" width="140" height="80" rx="8" class="box"/><text x="80.0" y="86.0" class="t tb" text-anchor="middle" >Dataset</text><text x="80.0" y="104.0" class="t ts" text-anchor="middle" >60,000 images</text><rect x="200" y="50" width="170" height="80" rx="8" class="box"/><text x="285.0" y="86.0" class="t tb" text-anchor="middle" >DataLoader</text><text x="285.0" y="104.0" class="t ts" text-anchor="middle" >batch size 64, shuffle</text><line x1="150" y1="90" x2="198" y2="90" class="fw" marker-end="url(#aN12)"/><line x1="370" y1="90" x2="590" y2="90" class="fw" marker-end="url(#aN12)"/><text x="480" y="80" class="t ts tn" text-anchor="middle" >one batch at a time</text><rect x="630" y="28" width="100" height="100" rx="4" class="box"/><rect x="618" y="40" width="100" height="100" rx="4" class="box"/><rect x="606" y="52" width="100" height="100" rx="4" class="box"/><text x="656" y="107" class="t tb" text-anchor="middle" >28 x 28</text><text x="380" y="188" class="t tl tb tn" text-anchor="middle" >x.shape = [64, 1, 28, 28]</text><rect x="20" y="210" width="160" height="64" rx="8" class="box2"/><text x="100.0" y="238.0" class="t tb" text-anchor="middle" >64</text><text x="100.0" y="256.0" class="t ts" text-anchor="middle" >images per batch</text><rect x="200" y="210" width="160" height="64" rx="8" class="box2"/><text x="280.0" y="238.0" class="t tb" text-anchor="middle" >1</text><text x="280.0" y="256.0" class="t ts" text-anchor="middle" >channel (grayscale)</text><rect x="380" y="210" width="160" height="64" rx="8" class="box2"/><text x="460.0" y="238.0" class="t tb" text-anchor="middle" >28</text><text x="460.0" y="256.0" class="t ts" text-anchor="middle" >height in pixels</text><rect x="560" y="210" width="160" height="64" rx="8" class="box2"/><text x="640.0" y="238.0" class="t tb" text-anchor="middle" >28</text><text x="640.0" y="256.0" class="t ts" text-anchor="middle" >width in pixels</text></svg>
+<figcaption>From a dataset to batches. Each batch is one tensor holding 64 images.</figcaption>
+</figure>
+<ul>
+<li><strong>Why batches?</strong> Computing on 64 images at once is much faster than one at a time, and it fits in memory. Using all 60,000 at once would not.</li>
+<li><strong>Why shuffle?</strong> If the data is sorted by class, a batch would contain only one class. Shuffling mixes them.</li>
+</ul>
+
+<h2 id="model">3. The model: a stack of layers</h2>
+<p>Our model is three simple pieces in a row:</p>
+<ol>
+<li><strong>Flatten</strong> unrolls the 28 by 28 grid into a list of 784 numbers.</li>
+<li><strong>Linear (784 to 128)</strong> makes 128 new numbers. Each one is a weighted sum of all 784 inputs plus a bias. Then <strong>ReLU</strong> sets every negative number to 0.</li>
+<li><strong>Linear (128 to 10)</strong> makes 10 scores, one per class. The highest score is the prediction. These raw scores are called <strong>logits</strong>.</li>
+</ol>
+<figure>
+<svg class="fig" viewBox="0 0 760 335" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A small network: 784 inputs, 128 hidden units, 10 outputs"><defs><marker id="aN13" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA13" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><line x1="120" y1="60" x2="380" y2="45" class="lg"/><line x1="120" y1="60" x2="380" y2="85" class="lg"/><line x1="120" y1="60" x2="380" y2="125" class="lg"/><line x1="120" y1="60" x2="380" y2="215" class="lg"/><line x1="120" y1="60" x2="380" y2="255" class="lg"/><line x1="120" y1="100" x2="380" y2="45" class="lg"/><line x1="120" y1="100" x2="380" y2="85" class="lg"/><line x1="120" y1="100" x2="380" y2="125" class="lg"/><line x1="120" y1="100" x2="380" y2="215" class="lg"/><line x1="120" y1="100" x2="380" y2="255" class="lg"/><line x1="120" y1="140" x2="380" y2="45" class="lg"/><line x1="120" y1="140" x2="380" y2="85" class="lg"/><line x1="120" y1="140" x2="380" y2="125" class="lg"/><line x1="120" y1="140" x2="380" y2="215" class="lg"/><line x1="120" y1="140" x2="380" y2="255" class="lg"/><line x1="120" y1="230" x2="380" y2="45" class="lg"/><line x1="120" y1="230" x2="380" y2="85" class="lg"/><line x1="120" y1="230" x2="380" y2="125" class="lg"/><line x1="120" y1="230" x2="380" y2="215" class="lg"/><line x1="120" y1="230" x2="380" y2="255" class="lg"/><line x1="380" y1="45" x2="640" y2="70" class="lg"/><line x1="380" y1="45" x2="640" y2="110" class="lg"/><line x1="380" y1="45" x2="640" y2="150" class="lg"/><line x1="380" y1="45" x2="640" y2="240" class="lg"/><line x1="380" y1="85" x2="640" y2="70" class="lg"/><line x1="380" y1="85" x2="640" y2="110" class="lg"/><line x1="380" y1="85" x2="640" y2="150" class="lg"/><line x1="380" y1="85" x2="640" y2="240" class="lg"/><line x1="380" y1="125" x2="640" y2="70" class="lg"/><line x1="380" y1="125" x2="640" y2="110" class="lg"/><line x1="380" y1="125" x2="640" y2="150" class="lg"/><line x1="380" y1="125" x2="640" y2="240" class="lg"/><line x1="380" y1="215" x2="640" y2="70" class="lg"/><line x1="380" y1="215" x2="640" y2="110" class="lg"/><line x1="380" y1="215" x2="640" y2="150" class="lg"/><line x1="380" y1="215" x2="640" y2="240" class="lg"/><line x1="380" y1="255" x2="640" y2="70" class="lg"/><line x1="380" y1="255" x2="640" y2="110" class="lg"/><line x1="380" y1="255" x2="640" y2="150" class="lg"/><line x1="380" y1="255" x2="640" y2="240" class="lg"/><circle cx="120" cy="60" r="12" class="node"/><circle cx="120" cy="100" r="12" class="node"/><circle cx="120" cy="140" r="12" class="node"/><circle cx="120" cy="230" r="12" class="node"/><circle cx="380" cy="45" r="12" class="node"/><circle cx="380" cy="85" r="12" class="node"/><circle cx="380" cy="125" r="12" class="node"/><circle cx="380" cy="215" r="12" class="node"/><circle cx="380" cy="255" r="12" class="node"/><circle cx="640" cy="70" r="12" class="node"/><circle cx="640" cy="110" r="12" class="node"/><circle cx="640" cy="150" r="12" class="node"/><circle cx="640" cy="240" r="12" class="node"/><text x="120" y="185" class="t tl tb" text-anchor="middle" >...</text><text x="380" y="170" class="t tl tb" text-anchor="middle" >...</text><text x="640" y="195" class="t tl tb" text-anchor="middle" >...</text><text x="662" y="74" class="t ts" text-anchor="start" >T-shirt</text><text x="662" y="114" class="t ts" text-anchor="start" >Trouser</text><text x="662" y="154" class="t ts" text-anchor="start" >Pullover</text><text x="662" y="244" class="t ts" text-anchor="start" >Ankle boot</text><text x="250" y="22" class="t ts tn" text-anchor="middle" >Flatten, then Linear 784 to 128, then ReLU</text><text x="510" y="22" class="t ts tn" text-anchor="middle" >Linear 128 to 10</text><text x="120" y="300" class="t tb" text-anchor="middle" >Input</text><text x="120" y="320" class="t ts" text-anchor="middle" >784 pixel values</text><text x="380" y="300" class="t tb" text-anchor="middle" >Hidden layer</text><text x="380" y="320" class="t ts" text-anchor="middle" >128 units</text><text x="640" y="300" class="t tb" text-anchor="middle" >Output</text><text x="640" y="320" class="t ts" text-anchor="middle" >10 class scores</text></svg>
+<figcaption>The network from this module. Every line is a weight the model learns.</figcaption>
+</figure>
+<p>How many numbers does the model learn? First layer: 784 x 128 weights plus 128 biases = 100,480. Second layer: 128 x 10 weights plus 10 biases = 1,290. Total: <strong>101,770</strong>. Training is the process of finding good values for these 101,770 numbers.</p>
+<p>ReLU is what makes the model more than a fancy straight line. You will see exactly why in Module 2.</p>
+
+<h2 id="loss">4. The loss: scoring mistakes</h2>
+<p>The <strong>loss</strong> is one number that says how wrong the model is. Lower is better. Training tries to make it small.</p>
+<p>For classification we use <strong>cross-entropy loss</strong>. It looks at the probability the model gave to the <em>correct</em> class:</p>
+<table>
+<tr><th>Probability given to the correct class</th><th>Loss</th></tr>
+<tr><td>0.90 (confident and right)</td><td>0.105</td></tr>
+<tr><td>0.10 (mostly wrong)</td><td>2.303</td></tr>
+<tr><td>0.10 for all 10 classes (pure guessing)</td><td>2.303</td></tr>
+</table>
+<div class="note"><strong>A useful sanity check:</strong> with 10 classes, a model that has learned nothing has a loss near 2.3. If your first printed loss is about 2.3 and then falls, training is working. If it starts at 50 or at nan, something is wrong.</div>
+<p>In PyTorch, <code>nn.CrossEntropyLoss</code> takes the raw logits directly. Do not add a softmax yourself.</p>
+
+<h2 id="loop">5. The training loop</h2>
+<p>Training repeats one cycle, over and over, on one batch at a time.</p>
+<figure>
+<svg class="fig" viewBox="0 0 760 350" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The training loop: batch, model, predictions, loss, backward pass, optimizer step"><defs><marker id="aN11" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA11" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><rect x="20" y="40" width="150" height="70" rx="8" class="box"/><text x="95.0" y="71.0" class="t tb" text-anchor="middle" >Batch</text><text x="95.0" y="89.0" class="t ts" text-anchor="middle" >images x, labels y</text><rect x="230" y="40" width="130" height="70" rx="8" class="box"/><text x="295.0" y="71.0" class="t tb" text-anchor="middle" >Model</text><text x="295.0" y="89.0" class="t ts" text-anchor="middle" >has weights</text><rect x="420" y="40" width="130" height="70" rx="8" class="box"/><text x="485.0" y="71.0" class="t tb" text-anchor="middle" >Predictions</text><text x="485.0" y="89.0" class="t ts" text-anchor="middle" >one score per class</text><rect x="610" y="40" width="130" height="70" rx="8" class="box"/><text x="675.0" y="71.0" class="t tb" text-anchor="middle" >Loss</text><text x="675.0" y="89.0" class="t ts" text-anchor="middle" >how wrong?</text><line x1="170" y1="75" x2="228" y2="75" class="fw" marker-end="url(#aN11)"/><line x1="360" y1="75" x2="418" y2="75" class="fw" marker-end="url(#aN11)"/><line x1="550" y1="75" x2="608" y2="75" class="fw" marker-end="url(#aN11)"/><text x="389" y="66" class="t ts tn" text-anchor="middle" >1 forward</text><text x="580" y="66" class="t ts tn" text-anchor="middle" >2 loss</text><rect x="610" y="200" width="130" height="70" rx="8" class="hl"/><text x="675.0" y="231.0" class="t tb" text-anchor="middle" >Gradients</text><text x="675.0" y="249.0" class="t ts" text-anchor="middle" >blame per weight</text><rect x="230" y="200" width="130" height="70" rx="8" class="hl"/><text x="295.0" y="231.0" class="t tb" text-anchor="middle" >Updated</text><text x="295.0" y="249.0" class="t ts" text-anchor="middle" >weights</text><line x1="675" y1="110" x2="675" y2="198" class="bw" marker-end="url(#aA11)"/><text x="665" y="158" class="t ts ta" text-anchor="end" >3 loss.backward()</text><line x1="608" y1="235" x2="362" y2="235" class="bw" marker-end="url(#aA11)"/><text x="485" y="225" class="t ts ta" text-anchor="middle" >4 optimizer.step()</text><line x1="295" y1="198" x2="295" y2="112" class="bw" marker-end="url(#aA11)"/><text x="305" y="158" class="t ts ta" text-anchor="start" >new weights are used next batch</text><text x="380" y="310" class="t" text-anchor="middle" >Inside the loop, in this order: forward pass, loss, zero_grad, backward, step.</text><text x="380" y="334" class="t tm" text-anchor="middle" >Repeat for every batch in every epoch. The loss should slowly go down.</text></svg>
+<figcaption>One training step. Blue arrows are the forward direction; orange arrows are the learning step.</figcaption>
+</figure>
+<pre><code>for x, y in train_dl:
+    preds = model(x)             # 1. forward pass
+    loss = loss_fn(preds, y)     # 2. loss
+    optimizer.zero_grad()        # clear gradients from the last step
+    loss.backward()              # 3. backward pass: compute gradients
+    optimizer.step()             # 4. update the weights</code></pre>
+<ul>
+<li><strong>Gradient:</strong> for every weight, the direction and amount it should change to lower the loss. <code>loss.backward()</code> computes them all. You will write this yourself in Module 2.</li>
+<li><strong>Why <code>zero_grad()</code>?</strong> PyTorch adds new gradients onto old ones. Without clearing, each step would use stale information from earlier batches.</li>
+<li><strong>Optimizer:</strong> the rule for using gradients. Basic gradient descent moves each weight a small step against its gradient. We use <strong>Adam</strong>, a strong default, with a <strong>learning rate</strong> of 0.001 (the step size).</li>
+<li><strong>Epoch:</strong> one full pass over the training data. With 60,000 images and batches of 64, one epoch is 938 steps, so 5 epochs is 4,690 weight updates.</li>
+</ul>
+
+<h2 id="eval">6. Evaluating honestly</h2>
+<p>A model can memorize its training pictures without learning anything general. So we hold back 10,000 images, the <strong>test set</strong>, that the model never trains on. <strong>Accuracy</strong> on this set is the fraction of images classified correctly, and it tells you how the model would do on new pictures.</p>
+<figure>
+<svg class="fig" viewBox="0 0 760 315" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Training loss keeps falling while test loss starts to rise: overfitting"><defs><marker id="aN14" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA14" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><line x1="80" y1="260" x2="710" y2="260" class="ax"/><line x1="80" y1="260" x2="80" y2="28" class="ax"/><text x="395" y="300" class="t" text-anchor="middle" >epochs (passes over the training data)</text><text x="26" y="150" class="t" text-anchor="middle" transform="rotate(-90 26 150)">loss (lower is better)</text><line x1="380" y1="40" x2="380" y2="260" class="lg dash" style="opacity:1"/><text x="390" y="52" class="t ts ta" text-anchor="start" >overfitting starts here</text><path d="M80,60 C 200,150 350,215 700,244" class="ln"/><path d="M80,78 C 170,140 280,170 380,172 S 590,140 700,112" class="la"/><text x="560" y="216" class="t ts tn" text-anchor="middle" >training loss keeps falling</text><text x="620" y="98" class="t ts ta" text-anchor="middle" >test loss turns upward</text><line x1="672" y1="128" x2="672" y2="232" class="fw" marker-end="url(#aN14)"/><text x="684" y="185" class="t ts tm" text-anchor="start" >gap grows</text></svg>
+<figcaption>Overfitting: the training loss keeps falling, but the test loss starts rising once the model memorizes.</figcaption>
+</figure>
+<p><strong>Overfitting</strong> means doing well on training data but worse on new data. The sign is a growing gap between training and test results. In Module 3 you will learn ways to fight it.</p>
+<p>When evaluating, two small habits matter:</p>
+<ul>
+<li><code>model.eval()</code> switches layers like dropout to their testing behaviour. Our model has none yet, but make it a habit.</li>
+<li><code>torch.no_grad()</code> turns off gradient tracking, which saves time and memory, because we are only predicting.</li>
+</ul>
+
+<h2 id="terms">7. Key terms</h2>
+<table>
+<tr><th>Term</th><th>Plain meaning</th></tr>
+<tr><td>Tensor</td><td>A block of numbers with a shape, which can live on a GPU</td></tr>
+<tr><td>Batch</td><td>A small group of examples processed together</td></tr>
+<tr><td>Weights</td><td>The numbers the model learns</td></tr>
+<tr><td>Logits</td><td>The raw scores the model outputs, one per class</td></tr>
+<tr><td>Loss</td><td>One number saying how wrong the model is</td></tr>
+<tr><td>Gradient</td><td>How each weight should change to lower the loss</td></tr>
+<tr><td>Learning rate</td><td>The size of each update step</td></tr>
+<tr><td>Epoch</td><td>One full pass over the training data</td></tr>
+<tr><td>Overfitting</td><td>Doing well on training data but poorly on new data</td></tr>
+</table>
+
+<h2 id="pitfalls">8. Common pitfalls</h2>
+<ul>
+<li>Forgetting <code>optimizer.zero_grad()</code>, so the loss behaves strangely.</li>
+<li>Forgetting <code>.to(device)</code> on the images and labels, which gives a "tensors on different devices" error.</li>
+<li>Judging the model by training accuracy instead of test accuracy.</li>
+<li>Wrong layer sizes. The first Linear must take 784 inputs, and the last must output 10.</li>
+<li>Adding a softmax before <code>CrossEntropyLoss</code>, which already includes it.</li>
+</ul>
+
+<h2 id="check">9. Check yourself</h2>
+<p>Try each question first, then open the answer.</p>
+<details><summary>Question 1: A batch has shape [64, 1, 28, 28]. How many numbers is that?</summary><p>64 x 1 x 28 x 28 = <strong>50,176</strong> numbers.</p></details>
+<details><summary>Question 2: Your first printed loss is about 2.3 for this 10-class problem. Is that a problem?</summary><p>No. A model that guesses randomly among 10 classes has a loss near 2.3, which is exactly what you expect before any learning. It should fall from there.</p></details>
+<details><summary>Question 3: Training accuracy is 99% but test accuracy is 85%. What is happening, and what is your first idea?</summary><p>The model is overfitting: it has memorized training pictures. Ideas include more data, data augmentation, or regularization such as dropout. You will practise these in Module 3.</p></details>
+
+<h2>Next steps</h2>
+<ul>
+<li>Open the <a href="https://colab.research.google.com/github/panchadk/AIStartup/blob/main/module1_first_model.ipynb" target="_blank" rel="noopener">Module 1 notebook in Colab</a> and start building.</li>
+<li>Back to the <a href="https://panchadk.github.io/AIStartup/module1_page.html">Module 1 page</a>.</li>
+</ul>
+<div class="nav"><span></span><a href="https://panchadk.github.io/AIStartup/module2_notes.html">Next: Module 2 notes, Neural network from scratch &rarr;</a></div>
+
+</body>
+</html>
