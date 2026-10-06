@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Module 2: Reference solution</title>
+<style>
+  :root { --navy: #1F3864; --ink: #222222; --bg: #FFFFFF; --code-bg: #F3F6FA; --warn-bg: #FFF4E5; --warn-edge: #E08A00; }
+  body { font-family: Arial, Helvetica, sans-serif; max-width: 860px; margin: 0 auto; padding: 24px; line-height: 1.6; color: var(--ink); background: var(--bg); }
+  h3 { color: var(--navy); border-bottom: 3px solid var(--navy); padding-bottom: 6px; }
+  h4 { color: var(--navy); margin-top: 28px; }
+  strong { color: var(--navy); }
+  code { font-family: Consolas, "Courier New", monospace; background: var(--code-bg); padding: 1px 4px; border-radius: 3px; }
+  pre { background: var(--code-bg); border-left: 4px solid var(--navy); padding: 14px; overflow-x: auto; border-radius: 4px; }
+  pre code { background: none; padding: 0; }
+  .banner { background: var(--warn-bg); border-left: 4px solid var(--warn-edge); padding: 12px 16px; border-radius: 4px; margin: 16px 0; }
+  @media (prefers-color-scheme: dark) {
+    :root { --navy: #8FB4F0; --ink: #E6E6E6; --bg: #14181F; --code-bg: #1E2530; --warn-bg: #3A2C12; --warn-edge: #E0A040; }
+  }
+</style>
+</head>
+<body>
+<h3>Module 2: Reference solution</h3>
+<div class="banner"><strong>Try it yourself first.</strong> Open this page only after your own honest attempt. If a gradient check is failing, first re-read the shapes and the division by N, then compare your code here. Matching line for line is not required: if every self-check passes, your solution is correct.</div>
+
+<h4>Step 1 question: why will a linear model struggle on the spirals?</h4>
+<p>A linear model can only draw straight decision boundaries. The three spirals are interleaved, so any straight line puts points of different classes on the same side. It scores about 54%, a little better than guessing. The hidden layer with ReLU lets the network bend the boundary and reach about 99%.</p>
+<h4>Step 2: forward pass</h4>
+<p>Hidden pre-activation, ReLU, then output scores. The cache keeps the values the backward pass needs.</p>
+<pre><code>def forward(params, X):
+    z1 = X @ params[&quot;W1&quot;] + params[&quot;b1&quot;]
+    h = np.maximum(0, z1)
+    logits = h @ params[&quot;W2&quot;] + params[&quot;b2&quot;]
+    return logits, (X, z1, h)</code></pre>
+<h4>Step 3: softmax and cross-entropy loss</h4>
+<p>Subtracting the row maximum does not change the softmax result, but it stops <code>exp()</code> from overflowing. The loss is the average of minus the log of the probability given to the correct class.</p>
+<pre><code>def softmax_cross_entropy(logits, y):
+    shifted = logits - logits.max(axis=1, keepdims=True)
+    exp = np.exp(shifted)
+    probs = exp / exp.sum(axis=1, keepdims=True)
+    loss = -np.log(probs[np.arange(len(y)), y]).mean()
+    return loss, probs</code></pre>
+<h4>Step 4: backpropagation</h4>
+<p>Work backwards with the chain rule. The first line is the key result: for softmax with cross-entropy, the gradient on the scores is simply <code>probs</code> minus 1 at the correct class, divided by N. The ReLU gradient is 1 where <code>z1 &gt; 0</code> and 0 elsewhere, so it acts as a mask.</p>
+<pre><code>def backward(params, cache, probs, y):
+    X, z1, h = cache
+    N = len(y)
+    dlogits = probs.copy()
+    dlogits[np.arange(N), y] -= 1
+    dlogits /= N
+    dW2 = h.T @ dlogits
+    db2 = dlogits.sum(axis=0)
+    dh = dlogits @ params[&quot;W2&quot;].T
+    dz1 = dh * (z1 &gt; 0)
+    dW1 = X.T @ dz1
+    db1 = dz1.sum(axis=0)
+    return {&quot;W1&quot;: dW1, &quot;b1&quot;: db1, &quot;W2&quot;: dW2, &quot;b2&quot;: db2}</code></pre>
+<h4>Step 5: gradient descent loop</h4>
+<p>Only the four lines inside the loop are yours. Each parameter steps against its gradient, scaled by the learning rate.</p>
+<pre><code>params = init_params()
+lr = 1.0
+loss = None
+history = []
+
+for i in range(5000):
+    logits, cache = forward(params, X)
+    loss, probs = softmax_cross_entropy(logits, y)
+    grads = backward(params, cache, probs, y)
+    for k in params:
+        params[k] -= lr * grads[k]
+
+    if i % 500 == 0 or i == 4999:
+        history.append(float(loss))
+        print(f&quot;step {i}: loss {loss:.4f}&quot;)</code></pre>
+<h4>Stretch: momentum</h4>
+<p>Keep a velocity for each parameter. It smooths the updates and often lowers the loss faster with the same learning rate.</p>
+<pre><code>params = init_params()
+velocity = {k: np.zeros_like(v) for k, v in params.items()}
+lr, mu = 0.5, 0.9
+
+for i in range(5000):
+    logits, cache = forward(params, X)
+    loss, probs = softmax_cross_entropy(logits, y)
+    grads = backward(params, cache, probs, y)
+    for k in params:
+        velocity[k] = mu * velocity[k] - lr * grads[k]
+        params[k] += velocity[k]</code></pre>
+<h4>Common mistakes and what they look like</h4>
+<ul>
+<li><strong>Forgot to divide by N in <code>dlogits</code>:</strong> the gradient check fails, and every gradient is N times too large (300 times here). Training may also blow up.</li>
+<li><strong>No ReLU mask in the backward pass (<code>dz1 = dh</code>):</strong> the check fails for <code>W1</code> and <code>b1</code> only, while <code>W2</code> and <code>b2</code> pass. That narrows the bug to the layers before the ReLU.</li>
+<li><strong>Wrong transpose:</strong> a shape error such as "operands could not be broadcast" or "shapes not aligned". Every gradient must have the same shape as its parameter: <code>h.T @ dlogits</code> for <code>W2</code>, <code>X.T @ dz1</code> for <code>W1</code>.</li>
+<li><strong>Forgot to subtract the row maximum in softmax:</strong> a nan loss when scores are large. The loss self-check tests this directly.</li>
+<li><strong>Updating with <code>+=</code> instead of <code>-=</code>:</strong> the loss goes up or becomes nan. Gradient descent steps against the gradient.</li>
+<li><strong>Summing instead of averaging the loss:</strong> the loss self-check (log 3 for equal scores) catches it, and the gradients no longer match.</li>
+<li><strong>Gradient check fails by a tiny amount (around 1e-4):</strong> use float64 arrays, as in the notebook. float32 is too imprecise for this check.</li>
+</ul>
+
+<h4>What to do next</h4>
+<ul>
+<li>Complete the three-line reflection and push your notebook to your portfolio repo.</li>
+<li>Take the Module 2 quiz in Moodle.</li>
+<li>Module 3 builds a reusable PyTorch training loop with experiment tracking, so the loop you wrote here becomes a function you will use all course.</li>
+</ul>
+
+</body>
+</html>

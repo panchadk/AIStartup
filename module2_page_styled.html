@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Module 2: Neural network from scratch</title>
+<style>
+  :root { --navy: #1F3864; --ink: #222222; --bg: #FFFFFF; --code-bg: #F3F6FA; --warn-bg: #FFF4E5; --warn-edge: #E08A00; }
+  body { font-family: Arial, Helvetica, sans-serif; max-width: 860px; margin: 0 auto; padding: 24px; line-height: 1.6; color: var(--ink); background: var(--bg); }
+  h3 { color: var(--navy); border-bottom: 3px solid var(--navy); padding-bottom: 6px; }
+  h4 { color: var(--navy); margin-top: 28px; }
+  strong { color: var(--navy); }
+  code { font-family: Consolas, "Courier New", monospace; background: var(--code-bg); padding: 1px 4px; border-radius: 3px; }
+  pre { background: var(--code-bg); border-left: 4px solid var(--navy); padding: 14px; overflow-x: auto; border-radius: 4px; }
+  pre code { background: none; padding: 0; }
+  .banner { background: var(--warn-bg); border-left: 4px solid var(--warn-edge); padding: 12px 16px; border-radius: 4px; margin: 16px 0; }
+  @media (prefers-color-scheme: dark) {
+    :root { --navy: #8FB4F0; --ink: #E6E6E6; --bg: #14181F; --code-bg: #1E2530; --warn-bg: #3A2C12; --warn-edge: #E0A040; }
+  }
+</style>
+</head>
+<body>
+<h3>Module 2: Neural network from scratch</h3>
+<p><strong>Project:</strong> code a 2-layer neural network in NumPy, with backpropagation written by hand, and train it on a toy dataset. <strong>Time:</strong> about 8 hours core, plus about 4 hours for the stretch challenge.</p>
+<p><strong>Done when:</strong> your hand-written gradients match numerical gradients and PyTorch autograd, and your network reaches 95% accuracy or higher on a dataset where a linear model fails.</p>
+<p><a href="https://colab.research.google.com/github/panchadk/AIStartup/blob/main/module2_from_scratch.ipynb" target="_blank" rel="noopener"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"></a></p>
+<p><em>Click the button to open the interactive notebook in Google Colab. Then choose File, Save a copy in Drive, and work in your own copy. No GPU is needed for this module.</em></p>
+
+<p><strong>Lecture notes:</strong> <a href="https://panchadk.github.io/AIStartup/module2_notes.html" target="_blank" rel="noopener">read the illustrated notes</a> (about 15 minutes, with diagrams). Read them first, or return to them when you are stuck.</p>
+
+<h4>Notes (about 10 minutes)</h4>
+<ul>
+<li>A <strong>layer</strong> computes a weighted sum of its inputs plus a bias, then applies a <strong>nonlinearity</strong> such as ReLU or sigmoid.</li>
+<li>Without nonlinearities, stacked layers collapse into a single linear function, however many layers you add.</li>
+<li><strong>Backpropagation</strong> applies the chain rule layer by layer, from the loss back to every weight. It tells you how much each weight contributed to the error.</li>
+<li><strong>Gradient descent</strong> moves each weight a small step against its gradient. The step size is the <strong>learning rate</strong>.</li>
+<li><strong>Gradient checking</strong> compares your hand-derived gradients with numerical gradients (nudge a weight up and down and watch the loss) or with autograd. It is the standard way to catch backprop bugs.</li>
+<li>Softmax turns class scores into probabilities. Subtract the largest score first, or large numbers overflow.</li>
+</ul>
+
+<h4>The network you will build</h4>
+<pre><code>z1     = X @ W1 + b1          # hidden pre-activation
+h      = max(0, z1)           # ReLU
+logits = h @ W2 + b2          # class scores
+loss   = mean cross-entropy of softmax(logits)</code></pre>
+
+<h4>Exercises (all in the notebook)</h4>
+<ol>
+<li><strong>Look at the data.</strong> Three interleaved spirals. Explain why a straight line cannot separate them.</li>
+<li><strong>Forward pass.</strong> Write <code>forward()</code>. Check: output shape and ReLU are correct.</li>
+<li><strong>Softmax and loss.</strong> Write <code>softmax_cross_entropy()</code>. Check: equal scores give a loss of log(3), and huge scores do not give nan.</li>
+<li><strong>Backpropagation.</strong> Write <code>backward()</code> by hand. Check: all four gradients match numerical gradients to better than 1e-6.</li>
+<li><strong>Train.</strong> Write the gradient descent loop. Check: loss falls and accuracy is 95% or higher.</li>
+<li><strong>Beat a linear model.</strong> Compare with a linear classifier and view your decision regions.</li>
+<li><strong>Compare with PyTorch.</strong> Your gradients should match <code>autograd</code>.</li>
+<li><strong>Stretch:</strong> add momentum and compare how fast the loss falls.</li>
+</ol>
+
+<h4>Hint ladder</h4>
+<ol>
+<li>NumPy docs and a web search for any function you are unsure about.</li>
+<li>The written hints under each step in the notebook.</li>
+<li>If a gradient check fails, check that one gradient's <em>shape</em> first, then its transposes, then the division by N.</li>
+<li>Reference solution: open <a href="https://panchadk.github.io/AIStartup/module2_solution.html" target="_blank" rel="noopener">the solution page</a> only after your own honest attempt.</li>
+</ol>
+
+<h4>Before you submit</h4>
+<ul>
+<li>Every self-check cell in the notebook passes, including the PyTorch comparison.</li>
+<li>Take the Module 2 quiz (pass mark 4 of 5).</li>
+<li>Push the notebook and a three-line reflection (what you built, what broke, what you would change) to <code>module-02</code> in your portfolio repo, then submit the link in the assignment below.</li>
+</ul>
+
+</body>
+</html>

@@ -1,0 +1,37 @@
+// Module 2 quiz - Deep Learning for AI Startups
+$CATEGORY: $course$/Module 2
+
+::M2 Q1:: Why do networks need nonlinear activation functions? {
+~To make training slower
+~To reduce memory
+~To normalize labels
+=Without them, stacked layers behave like a single linear layer#Stacking linear layers without a nonlinearity is still one linear function, so the network could not learn curved boundaries like the spirals.
+}
+
+::M2 Q2:: Backpropagation is an application of which idea? {
+=The chain rule#Backpropagation applies the chain rule layer by layer from the loss back to each weight.
+~The central limit theorem
+~Bayes' rule
+~Matrix inversion
+}
+
+::M2 Q3:: What happens if the learning rate is far too large? {
+~Training is always perfect
+~The model never uses the GPU
+=The loss can oscillate or diverge#Steps that are too big overshoot the minimum, so the loss bounces around or blows up.
+~Gradients become zero by definition
+}
+
+::M2 Q4:: What is gradient checking used for? {
+~Compressing models
+=Verifying that hand-written gradients are correct#It compares your analytic gradients with numerical gradients or autograd to catch backprop bugs.
+~Choosing the batch size
+~Selecting features
+}
+
+::M2 Q5:: In gradient descent, weights move in which direction? {
+~Along the gradient
+~Randomly
+~Toward zero always
+=Against the gradient of the loss#The gradient points uphill, so stepping against it lowers the loss.
+}
