@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Module 4 lecture notes: Fix the broken models</title>
+<style>
+  :root { --navy:#1F3864;--ink:#222222;--bg:#FFFFFF;--code-bg:#F3F6FA;--hl-bg:#FFF4E5;--accent:#D9730D;--muted:#8A94A6; --muted-text:#555555; --good:#2E7D32; }
+  body { font-family: Arial, Helvetica, sans-serif; max-width: 860px; margin: 0 auto; padding: 24px; line-height: 1.65; color: var(--ink); background: var(--bg); }
+  h1 { color: var(--navy); margin-bottom: 4px; }
+  h2 { color: var(--navy); border-bottom: 3px solid var(--navy); padding-bottom: 6px; margin-top: 40px; }
+  h3 { color: var(--navy); margin-top: 26px; }
+  strong { color: var(--navy); }
+  a { color: var(--navy); }
+  .meta { color: var(--muted-text); margin-top: 0; }
+  code { font-family: Consolas, "Courier New", monospace; background: var(--code-bg); padding: 1px 4px; border-radius: 3px; }
+  pre { background: var(--code-bg); border-left: 4px solid var(--navy); padding: 14px; overflow-x: auto; border-radius: 4px; }
+  pre code { background: none; padding: 0; }
+  .toc { background: var(--code-bg); border-radius: 6px; padding: 12px 20px; }
+  .toc ol { margin: 6px 0; }
+  .note { background: var(--hl-bg); border-left: 4px solid var(--accent); padding: 12px 16px; border-radius: 4px; margin: 18px 0; }
+  .key { background: var(--code-bg); border-left: 4px solid var(--navy); padding: 12px 16px; border-radius: 4px; margin: 18px 0; }
+  figure { margin: 26px 0; }
+  figcaption { font-size: .9em; color: var(--muted-text); text-align: center; margin-top: 6px; }
+  svg.fig { width: 100%; height: auto; max-width: 760px; display: block; margin: 0 auto; }
+  table { border-collapse: collapse; width: 100%; margin: 14px 0; }
+  th, td { border: 1px solid var(--muted); padding: 7px 10px; text-align: left; vertical-align: top; }
+  th { background: var(--code-bg); color: var(--navy); }
+  details { background: var(--code-bg); border-radius: 6px; padding: 8px 14px; margin: 10px 0; }
+  summary { cursor: pointer; font-weight: bold; color: var(--navy); }
+  .nav { display: flex; justify-content: space-between; gap: 12px; margin-top: 40px; padding-top: 14px; border-top: 1px solid var(--muted); flex-wrap: wrap; }
+
+svg .box{fill:var(--code-bg);stroke:var(--navy);stroke-width:2}
+svg .box2{fill:var(--bg);stroke:var(--navy);stroke-width:2}
+svg .hl{fill:var(--hl-bg);stroke:var(--accent);stroke-width:2}
+svg .t{fill:var(--ink);font-family:Arial,Helvetica,sans-serif;font-size:14px}
+svg .tb{font-weight:bold}
+svg .ts{font-size:12px}
+svg .tl{font-size:16px}
+svg .tn{fill:var(--navy)}
+svg .ta{fill:var(--accent)}
+svg .tm{fill:var(--muted)}
+svg .ln{stroke:var(--navy);stroke-width:2.5;fill:none}
+svg .la{stroke:var(--accent);stroke-width:2.5;fill:none}
+svg .lg{stroke:var(--muted);stroke-width:1;fill:none;opacity:.55}
+svg .ax{stroke:var(--ink);stroke-width:1.5;fill:none}
+svg .fw{stroke:var(--navy);stroke-width:2.5;fill:none}
+svg .bw{stroke:var(--accent);stroke-width:2.5;fill:none}
+svg .dash{stroke-dasharray:6 4}
+svg .mN{fill:var(--navy)}
+svg .mA{fill:var(--accent)}
+svg .dotN{fill:var(--navy)}
+svg .dotA{fill:var(--accent)}
+svg .sqN{fill:var(--navy)}
+svg .sqA{fill:var(--accent)}
+svg .sqM{fill:var(--muted)}
+svg .tbg{fill:var(--bg);font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:bold}
+svg .node{fill:var(--bg);stroke:var(--navy);stroke-width:2}
+
+  @media (prefers-color-scheme: dark) {
+    :root { --navy:#8FB4F0;--ink:#E6E6E6;--bg:#14181F;--code-bg:#1E2530;--hl-bg:#3A2C12;--accent:#F0A040;--muted:#6B778C; --muted-text:#B5BCC8; --good:#66BB6A; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Module 4: Fix the broken models</h1>
+<p class="meta">Lecture notes with diagrams. Reading time: about 20 minutes. Read once, then start the notebook, and come back here when you are stuck on a case.</p>
+
+<div class="toc"><strong>In these notes</strong>
+<ol>
+<li><a href="#big">Bugs that do not crash</a></li>
+<li><a href="#order">Debug in order</a></li>
+<li><a href="#tricks">Two powerful tricks</a></li>
+<li><a href="#gallery">A gallery of symptoms</a></li>
+<li><a href="#leak">Data leakage</a></li>
+<li><a href="#mode">Training mode and evaluation mode</a></li>
+<li><a href="#order2">Order, shuffling and the loss</a></li>
+<li><a href="#terms">Key terms</a>, <a href="#pitfalls">pitfalls</a>, and <a href="#check">check yourself</a></li>
+</ol></div>
+
+<h2 id="big">1. Bugs that do not crash</h2>
+<p>In normal programming, a bug usually gives an error message. In machine learning, the worst bugs give <strong>no error at all</strong>. The code runs, numbers print, and the model produces output. It is just quietly <em>wrong</em>: a bit worse than it should be, or secretly cheating, or fine on your data and useless in the real world.</p>
+<p>That makes debugging a different skill. You cannot wait for a crash. You must <strong>look</strong>: print things, plot things, compare things. This module trains that habit with five realistic bugs.</p>
+
+<h2 id="order">2. Debug in order</h2>
+<p>When a model misbehaves, the cause is almost always in one of four places. Check them in this order, cheapest first, and stop at the first thing that looks wrong:</p>
+<figure>
+<svg class="fig" viewBox="0 0 760 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Debugging order: data, labels and loss, model, optimizer, with the overfit-one-batch shortcut"><defs><marker id="aN41" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA41" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><rect x="15" y="30" width="150" height="56" rx="8" class="box"/><text x="90.0" y="63.0" class="t tb" text-anchor="middle" >1 Data</text><text x="90" y="118" class="t ts" text-anchor="middle" >print a batch</text><text x="90" y="140" class="t ts" text-anchor="middle" >shapes, ranges, labels</text><text x="90" y="162" class="t ts" text-anchor="middle" >splits share nothing</text><rect x="205" y="30" width="150" height="56" rx="8" class="box"/><text x="280.0" y="63.0" class="t tb" text-anchor="middle" >2 Labels and loss</text><text x="280" y="118" class="t ts" text-anchor="middle" >right loss for the task?</text><text x="280" y="140" class="t ts" text-anchor="middle" >right input for that loss?</text><text x="280" y="162" class="t ts" text-anchor="middle" >first loss is about ln(classes)</text><rect x="395" y="30" width="150" height="56" rx="8" class="box"/><text x="470.0" y="63.0" class="t tb" text-anchor="middle" >3 Model</text><text x="470" y="118" class="t ts" text-anchor="middle" >output shape correct?</text><text x="470" y="140" class="t ts" text-anchor="middle" >train mode or eval mode?</text><text x="470" y="162" class="t ts" text-anchor="middle" >last layer gives raw scores</text><rect x="585" y="30" width="150" height="56" rx="8" class="box"/><text x="660.0" y="63.0" class="t tb" text-anchor="middle" >4 Optimizer</text><text x="660" y="118" class="t ts" text-anchor="middle" >learning rate in range?</text><text x="660" y="140" class="t ts" text-anchor="middle" >five steps in right order?</text><text x="660" y="162" class="t ts" text-anchor="middle" >batches shuffled?</text><line x1="165" y1="58" x2="203" y2="58" class="fw" marker-end="url(#aN41)"/><line x1="355" y1="58" x2="393" y2="58" class="fw" marker-end="url(#aN41)"/><line x1="545" y1="58" x2="583" y2="58" class="fw" marker-end="url(#aN41)"/><text x="380" y="18" class="t tb tn" text-anchor="middle" >Check in this order and stop at the first thing that looks wrong</text><rect x="15" y="205" width="730" height="54" rx="8" class="hl"/><text x="380.0" y="228.0" class="t tb" text-anchor="middle" >Shortcut: overfit ONE small batch. If the loss cannot reach about 0, the bug is in steps 2 to 4.</text><text x="380.0" y="246.0" class="t ts" text-anchor="middle" >Also: beat a trivial baseline (always guess the most common class).</text></svg>
+<figcaption>The debugging order. Most bugs are found in steps 1 and 2, before you ever touch the model.</figcaption>
+</figure>
+<p>Why this order? Data and loss bugs are the most common and the cheapest to check. Changing the model is expensive and rarely the answer. A beginner's instinct is to add layers or train longer. An experienced engineer first prints a batch.</p>
+<div class="note"><strong>The golden rule:</strong> do not tune a model that you have not shown can learn. Tuning a broken pipeline is wasted time, and it can even hide the bug.</div>
+
+<h2 id="tricks">3. Two powerful tricks</h2>
+<h3>Trick 1: overfit one batch</h3>
+<p>Take a single small batch and train on it over and over. A correct model and training loop will drive the loss on that batch to <strong>nearly zero</strong>, because memorizing 64 examples is easy. If the loss will not go down, something basic is broken: the loss, the labels, the optimizer, or the learning rate.</p>
+<figure>
+<svg class="fig" viewBox="0 0 760 305" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Overfitting one batch: a healthy run reaches near-zero loss, a broken one plateaus or explodes"><defs><marker id="aN42" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA42" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><text x="185" y="24" class="t tb tn" text-anchor="middle" >Healthy model and loop</text><line x1="40" y1="230" x2="360" y2="230" class="ax"/><line x1="40" y1="230" x2="40" y2="45" class="ax"/><text x="200" y="256" class="t ts tm" text-anchor="middle" >training steps on one batch</text><text x="565" y="24" class="t tb tn" text-anchor="middle" >Something is broken</text><line x1="420" y1="230" x2="740" y2="230" class="ax"/><line x1="420" y1="230" x2="420" y2="45" class="ax"/><text x="580" y="256" class="t ts tm" text-anchor="middle" >training steps on one batch</text><path d="M40,70 C 90,150 160,205 360,225" class="ln"/><text x="255" y="160" class="t ts tn" text-anchor="middle" >loss falls to about 0</text><path d="M420,75 C 480,120 540,135 740,138" class="la"/><text x="640" y="128" class="t ts ta" text-anchor="middle" >plateau: stuck</text><path d="M420,150 L460,120 L500,70 L540,55 L580,48 L740,46" class="ln" style="opacity:.7"/><text x="650" y="40" class="t ts tn" text-anchor="middle" >explodes</text><text x="380" y="290" class="t tb" text-anchor="middle" >If this test fails, do not tune anything yet: find the bug first.</text></svg>
+<figcaption>A healthy loop reaches almost zero. A broken one plateaus or explodes. Do this before any tuning.</figcaption>
+</figure>
+<h3>Trick 2: beat a baseline, and know your starting loss</h3>
+<ul>
+<li><strong>Baseline:</strong> a trivial predictor, such as always guessing the most common class. If your model barely beats it, either the problem is hard or something is wrong.</li>
+<li><strong>Expected first loss:</strong> a model that guesses randomly among K classes has a cross-entropy loss near <code>ln(K)</code>. For 3 classes that is 1.1, and for 10 classes it is 2.3. If your first loss is 50 or nan, the setup is broken before training even starts.</li>
+</ul>
+
+<h2 id="gallery">4. A gallery of symptoms</h2>
+<p>Each of the five cases in the notebook has a recognizable symptom. Learn to recognize them.</p>
+<figure>
+<svg class="fig" viewBox="0 0 760 380" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Gallery of five bug symptoms: leakage, stuck loss, huge loss, sorted data, and eval mode"><defs><marker id="aN43" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA43" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><rect x="10" y="10" width="240" height="165" rx="8" class="box"/><text x="130" y="32" class="t tb tn" text-anchor="middle" >Case 1: leakage</text><text x="130" y="162" class="t ts" text-anchor="middle" >test 0.91 but fresh 0.75</text><rect x="60" y="45" width="50" height="85" class="sqN"/><rect x="140" y="63" width="50" height="67" class="sqA"/><text x="85" y="142" class="t ts" text-anchor="middle" >test</text><text x="165" y="142" class="t ts" text-anchor="middle" >fresh</text><rect x="260" y="10" width="240" height="165" rx="8" class="box"/><text x="380" y="32" class="t tb tn" text-anchor="middle" >Case 2: loss stuck</text><text x="380" y="162" class="t ts" text-anchor="middle" >accuracy fine, loss stalls at 0.6</text><path d="M280,60 C 320,100 350,100 480,102" class="ln"/><line x1="280" y1="128" x2="480" y2="128" class="lg dash" style="opacity:1"/><text x="480" y="124" class="t ts tm" text-anchor="end" >healthy: 0.15</text><text x="480" y="96" class="t ts tn" text-anchor="end" >0.6</text><rect x="510" y="10" width="240" height="165" rx="8" class="box"/><text x="630" y="32" class="t tb tn" text-anchor="middle" >Case 3: huge loss</text><text x="630" y="162" class="t ts" text-anchor="middle" >loss starts in the hundreds</text><path d="M530,48 C 580,52 640,70 730,100" class="la"/><text x="630" y="126" class="t ts tm" text-anchor="middle" >should start near 1.1</text><rect x="135" y="190" width="240" height="165" rx="8" class="box"/><text x="255" y="212" class="t tb tn" text-anchor="middle" >Case 4: sorted data</text><text x="255" y="342" class="t ts" text-anchor="middle" >accuracy 0.65 instead of 0.92</text><rect x="157" y="230" width="21" height="21" rx="3" class="sqN"/><text x="167.5" y="245" class="tbg" text-anchor="middle" >A</text><rect x="181" y="230" width="21" height="21" rx="3" class="sqN"/><text x="191.5" y="245" class="tbg" text-anchor="middle" >A</text><rect x="205" y="230" width="21" height="21" rx="3" class="sqN"/><text x="215.5" y="245" class="tbg" text-anchor="middle" >A</text><rect x="229" y="230" width="21" height="21" rx="3" class="sqA"/><text x="239.5" y="245" class="tbg" text-anchor="middle" >B</text><rect x="253" y="230" width="21" height="21" rx="3" class="sqA"/><text x="263.5" y="245" class="tbg" text-anchor="middle" >B</text><rect x="277" y="230" width="21" height="21" rx="3" class="sqA"/><text x="287.5" y="245" class="tbg" text-anchor="middle" >B</text><rect x="301" y="230" width="21" height="21" rx="3" class="sqM"/><text x="311.5" y="245" class="tbg" text-anchor="middle" >C</text><rect x="325" y="230" width="21" height="21" rx="3" class="sqM"/><text x="335.5" y="245" class="tbg" text-anchor="middle" >C</text><rect x="349" y="230" width="21" height="21" rx="3" class="sqM"/><text x="359.5" y="245" class="tbg" text-anchor="middle" >C</text><text x="255" y="282" class="t ts tm" text-anchor="middle" >batches in class order</text><rect x="385" y="190" width="240" height="165" rx="8" class="box"/><text x="505" y="212" class="t tb tn" text-anchor="middle" >Case 5: eval mode</text><text x="505" y="342" class="t ts" text-anchor="middle" >35% and it changes every run</text><rect x="440" y="225" width="50" height="75" class="sqN"/><rect x="520" y="263" width="50" height="37" class="sqA"/><text x="465" y="316" class="t ts" text-anchor="middle" >eval()</text><text x="545" y="316" class="t ts" text-anchor="middle" >forgot</text></svg>
+<figcaption>The five symptoms. Notice that in Case 2 the accuracy hides the bug, and only the loss shows it.</figcaption>
+</figure>
+<table>
+<tr><th>Symptom</th><th>Likely cause</th><th>First thing to check</th></tr>
+<tr><td>Test score much higher than real-world score</td><td>Data leakage</td><td>Do any samples or copies appear on both sides of the split?</td></tr>
+<tr><td>Accuracy fine but loss stuck high</td><td>Loss and output mismatch (double softmax)</td><td>What does the last layer output, and what does the loss expect?</td></tr>
+<tr><td>Loss in the hundreds, or nan</td><td>Learning rate far too high</td><td>Run a learning rate range test</td></tr>
+<tr><td>Model favours one class, accuracy poor</td><td>Data sorted and not shuffled</td><td>Print the first and last labels</td></tr>
+<tr><td>Eval score differs every run, or is far below training</td><td>Model left in training mode</td><td>Is <code>model.eval()</code> called?</td></tr>
+<tr><td>Loss does not move at all</td><td>Learning rate far too low, or missing <code>optimizer.step()</code></td><td>Overfit one batch</td></tr>
+</table>
+
+<h2 id="leak">5. Data leakage</h2>
+<p><strong>Data leakage</strong> means information from the test data sneaks into training, so the test score looks better than reality. The model is graded on questions it has effectively seen.</p>
+<figure>
+<svg class="fig" viewBox="0 0 760 310" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Random row split puts copies of the same sample in train and test, a group split keeps them together"><defs><marker id="aN44" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA44" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><text x="190" y="24" class="t tb tn" text-anchor="middle" >Random split of ROWS</text><text x="570" y="24" class="t tb tn" text-anchor="middle" >Split by ORIGINAL SAMPLE</text><text x="122" y="76" class="t ts" text-anchor="end" >sample 17</text><rect x="130" y="60" width="24" height="24" rx="3" class="sqN"/><rect x="160" y="60" width="24" height="24" rx="3" class="sqN"/><rect x="190" y="60" width="24" height="24" rx="3" class="sqN"/><rect x="220" y="60" width="24" height="24" rx="3" class="sqA"/><rect x="250" y="60" width="24" height="24" rx="3" class="sqN"/><text x="122" y="126" class="t ts" text-anchor="end" >sample 42</text><rect x="130" y="110" width="24" height="24" rx="3" class="sqN"/><rect x="160" y="110" width="24" height="24" rx="3" class="sqA"/><rect x="190" y="110" width="24" height="24" rx="3" class="sqN"/><rect x="220" y="110" width="24" height="24" rx="3" class="sqA"/><rect x="250" y="110" width="24" height="24" rx="3" class="sqN"/><text x="122" y="176" class="t ts" text-anchor="end" >sample 91</text><rect x="130" y="160" width="24" height="24" rx="3" class="sqN"/><rect x="160" y="160" width="24" height="24" rx="3" class="sqN"/><rect x="190" y="160" width="24" height="24" rx="3" class="sqN"/><rect x="220" y="160" width="24" height="24" rx="3" class="sqN"/><rect x="250" y="160" width="24" height="24" rx="3" class="sqA"/><text x="512" y="76" class="t ts" text-anchor="end" >sample 17</text><rect x="520" y="60" width="24" height="24" rx="3" class="sqN"/><rect x="550" y="60" width="24" height="24" rx="3" class="sqN"/><rect x="580" y="60" width="24" height="24" rx="3" class="sqN"/><rect x="610" y="60" width="24" height="24" rx="3" class="sqN"/><rect x="640" y="60" width="24" height="24" rx="3" class="sqN"/><text x="512" y="126" class="t ts" text-anchor="end" >sample 42</text><rect x="520" y="110" width="24" height="24" rx="3" class="sqA"/><rect x="550" y="110" width="24" height="24" rx="3" class="sqA"/><rect x="580" y="110" width="24" height="24" rx="3" class="sqA"/><rect x="610" y="110" width="24" height="24" rx="3" class="sqA"/><rect x="640" y="110" width="24" height="24" rx="3" class="sqA"/><text x="512" y="176" class="t ts" text-anchor="end" >sample 91</text><rect x="520" y="160" width="24" height="24" rx="3" class="sqN"/><rect x="550" y="160" width="24" height="24" rx="3" class="sqN"/><rect x="580" y="160" width="24" height="24" rx="3" class="sqN"/><rect x="610" y="160" width="24" height="24" rx="3" class="sqN"/><rect x="640" y="160" width="24" height="24" rx="3" class="sqN"/><line x1="380" y1="40" x2="380" y2="215" class="lg" style="opacity:1"/><text x="190" y="232" class="t ts ta" text-anchor="middle" >copies of one sample sit on BOTH sides</text><text x="190" y="250" class="t ts ta" text-anchor="middle" >the test set is partly memorized</text><text x="570" y="232" class="t ts tn" text-anchor="middle" >all copies stay on ONE side</text><text x="570" y="250" class="t ts tn" text-anchor="middle" >the test set is truly unseen</text><rect x="250" y="272" width="22" height="22" rx="3" class="sqN"/><text x="280" y="288" class="t ts" text-anchor="start" >row in training set</text><rect x="440" y="272" width="22" height="22" rx="3" class="sqA"/><text x="470" y="288" class="t ts" text-anchor="start" >row in test set</text></svg>
+<figcaption>In Case 1 every original sample has 5 copies. A random row split scatters them; a group split keeps them together.</figcaption>
+</figure>
+<p>Common forms of leakage:</p>
+<ul>
+<li><strong>Duplicates and near-duplicates</strong> across the split, such as augmented copies, repeated rows, or frames from the same video. Split by <em>group</em>.</li>
+<li><strong>Preprocessing fitted on all the data</strong>, such as a scaler using the mean and standard deviation of train plus test. Fit it on the training data only, then apply it to the rest. The effect is often small, but it is a bad habit and sometimes a big problem.</li>
+<li><strong>The future leaking into the past</strong>, in time-ordered data: always split by time, with the test set after the training set.</li>
+<li><strong>A feature that is secretly the answer</strong>, such as an ID that encodes the label.</li>
+</ul>
+<div class="key"><strong>The test:</strong> a leaky test set gives a score that is too good to be true. If your model does far worse on genuinely new data than on the test set, suspect leakage first.</div>
+
+<h2 id="mode">6. Training mode and evaluation mode</h2>
+<p>Some layers behave differently while training and while predicting. PyTorch lets you switch with <code>model.train()</code> and <code>model.eval()</code>.</p>
+<figure>
+<svg class="fig" viewBox="0 0 760 310" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="What changes between training mode and evaluation mode for dropout and batch normalization"><defs><marker id="aN45" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA45" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><rect x="150" y="20" width="270" height="40" rx="8" class="box"/><text x="285.0" y="45.0" class="t tb" text-anchor="middle" >Training mode  model.train()</text><rect x="450" y="20" width="290" height="40" rx="8" class="hl"/><text x="595.0" y="45.0" class="t tb" text-anchor="middle" >Evaluation mode  model.eval()</text><rect x="10" y="80" width="125" height="56" rx="8" class="box2"/><text x="72.5" y="113.0" class="t tb" text-anchor="middle" >Dropout</text><rect x="10" y="156" width="125" height="56" rx="8" class="box2"/><text x="72.5" y="189.0" class="t tb" text-anchor="middle" >BatchNorm</text><rect x="150" y="80" width="270" height="56" rx="8" class="box"/><text x="285.0" y="104.0" class="t tb" text-anchor="middle" >randomly switches off units</text><text x="285.0" y="122.0" class="t ts" text-anchor="middle" >different every pass</text><rect x="450" y="80" width="290" height="56" rx="8" class="hl"/><text x="595.0" y="104.0" class="t tb" text-anchor="middle" >off: every unit is used</text><text x="595.0" y="122.0" class="t ts" text-anchor="middle" >same answer every time</text><rect x="150" y="156" width="270" height="56" rx="8" class="box"/><text x="285.0" y="180.0" class="t tb" text-anchor="middle" >normalizes with the statistics</text><text x="285.0" y="198.0" class="t ts" text-anchor="middle" >of the CURRENT batch</text><rect x="450" y="156" width="290" height="56" rx="8" class="hl"/><text x="595.0" y="180.0" class="t tb" text-anchor="middle" >normalizes with the running</text><text x="595.0" y="198.0" class="t ts" text-anchor="middle" >statistics learned in training</text><text x="380" y="246" class="t" text-anchor="middle" >Evaluating in training mode on a batch holding ONE class makes BatchNorm</text><text x="380" y="266" class="t" text-anchor="middle" >use that single class as the 'average', which wrecks the predictions.</text><text x="380" y="294" class="t tb tn" text-anchor="middle" >torch.no_grad() additionally skips gradient tracking: faster and safer.</text></svg>
+<figcaption>Dropout and BatchNorm change behaviour between the two modes. Forgetting to switch is a classic silent bug.</figcaption>
+</figure>
+<ul>
+<li>In <strong>training mode</strong>, Dropout randomly drops units, so repeating the same evaluation gives different numbers. BatchNorm uses the statistics of the current batch.</li>
+<li>In <strong>evaluation mode</strong>, Dropout is off and BatchNorm uses the running statistics it collected during training. Results are deterministic.</li>
+<li><code>torch.no_grad()</code> is a separate switch: it stops PyTorch from tracking gradients, which saves time and memory when you are only predicting.</li>
+</ul>
+<p>The sanity test is simple: evaluate the same model on the same data twice. If the numbers differ, the model is not in evaluation mode.</p>
+
+<h2 id="order2">7. Order, shuffling and the loss</h2>
+<h3>Shuffling</h3>
+<figure>
+<svg class="fig" viewBox="0 0 760 285" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Sorted batches teach the model one class at a time, shuffled batches are a fair mix"><defs><marker id="aN46" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA46" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><text x="380" y="24" class="t tb tn" text-anchor="middle" >The order in which batches arrive during one epoch</text><text x="380" y="56" class="t tb" text-anchor="middle" >Not shuffled: data sorted by class</text><rect x="82" y="66" width="30" height="30" rx="4" class="sqN"/><text x="97" y="86" class="tbg" text-anchor="middle" >A</text><rect x="116" y="66" width="30" height="30" rx="4" class="sqN"/><text x="131" y="86" class="tbg" text-anchor="middle" >A</text><rect x="150" y="66" width="30" height="30" rx="4" class="sqN"/><text x="165" y="86" class="tbg" text-anchor="middle" >A</text><rect x="184" y="66" width="30" height="30" rx="4" class="sqN"/><text x="199" y="86" class="tbg" text-anchor="middle" >A</text><rect x="218" y="66" width="30" height="30" rx="4" class="sqN"/><text x="233" y="86" class="tbg" text-anchor="middle" >A</text><rect x="252" y="66" width="30" height="30" rx="4" class="sqN"/><text x="267" y="86" class="tbg" text-anchor="middle" >A</text><rect x="286" y="66" width="30" height="30" rx="4" class="sqA"/><text x="301" y="86" class="tbg" text-anchor="middle" >B</text><rect x="320" y="66" width="30" height="30" rx="4" class="sqA"/><text x="335" y="86" class="tbg" text-anchor="middle" >B</text><rect x="354" y="66" width="30" height="30" rx="4" class="sqA"/><text x="369" y="86" class="tbg" text-anchor="middle" >B</text><rect x="388" y="66" width="30" height="30" rx="4" class="sqA"/><text x="403" y="86" class="tbg" text-anchor="middle" >B</text><rect x="422" y="66" width="30" height="30" rx="4" class="sqA"/><text x="437" y="86" class="tbg" text-anchor="middle" >B</text><rect x="456" y="66" width="30" height="30" rx="4" class="sqA"/><text x="471" y="86" class="tbg" text-anchor="middle" >B</text><rect x="490" y="66" width="30" height="30" rx="4" class="sqM"/><text x="505" y="86" class="tbg" text-anchor="middle" >C</text><rect x="524" y="66" width="30" height="30" rx="4" class="sqM"/><text x="539" y="86" class="tbg" text-anchor="middle" >C</text><rect x="558" y="66" width="30" height="30" rx="4" class="sqM"/><text x="573" y="86" class="tbg" text-anchor="middle" >C</text><rect x="592" y="66" width="30" height="30" rx="4" class="sqM"/><text x="607" y="86" class="tbg" text-anchor="middle" >C</text><rect x="626" y="66" width="30" height="30" rx="4" class="sqM"/><text x="641" y="86" class="tbg" text-anchor="middle" >C</text><rect x="660" y="66" width="30" height="30" rx="4" class="sqM"/><text x="675" y="86" class="tbg" text-anchor="middle" >C</text><text x="380" y="124" class="t ts ta" text-anchor="middle" >The last updates all say "C", so the model drifts toward predicting C.</text><text x="380" y="168" class="t tb" text-anchor="middle" >Shuffled: every batch is a fair mix</text><rect x="82" y="178" width="30" height="30" rx="4" class="sqM"/><text x="97" y="198" class="tbg" text-anchor="middle" >C</text><rect x="116" y="178" width="30" height="30" rx="4" class="sqN"/><text x="131" y="198" class="tbg" text-anchor="middle" >A</text><rect x="150" y="178" width="30" height="30" rx="4" class="sqA"/><text x="165" y="198" class="tbg" text-anchor="middle" >B</text><rect x="184" y="178" width="30" height="30" rx="4" class="sqA"/><text x="199" y="198" class="tbg" text-anchor="middle" >B</text><rect x="218" y="178" width="30" height="30" rx="4" class="sqN"/><text x="233" y="198" class="tbg" text-anchor="middle" >A</text><rect x="252" y="178" width="30" height="30" rx="4" class="sqM"/><text x="267" y="198" class="tbg" text-anchor="middle" >C</text><rect x="286" y="178" width="30" height="30" rx="4" class="sqN"/><text x="301" y="198" class="tbg" text-anchor="middle" >A</text><rect x="320" y="178" width="30" height="30" rx="4" class="sqA"/><text x="335" y="198" class="tbg" text-anchor="middle" >B</text><rect x="354" y="178" width="30" height="30" rx="4" class="sqM"/><text x="369" y="198" class="tbg" text-anchor="middle" >C</text><rect x="388" y="178" width="30" height="30" rx="4" class="sqN"/><text x="403" y="198" class="tbg" text-anchor="middle" >A</text><rect x="422" y="178" width="30" height="30" rx="4" class="sqM"/><text x="437" y="198" class="tbg" text-anchor="middle" >C</text><rect x="456" y="178" width="30" height="30" rx="4" class="sqA"/><text x="471" y="198" class="tbg" text-anchor="middle" >B</text><rect x="490" y="178" width="30" height="30" rx="4" class="sqA"/><text x="505" y="198" class="tbg" text-anchor="middle" >B</text><rect x="524" y="178" width="30" height="30" rx="4" class="sqM"/><text x="539" y="198" class="tbg" text-anchor="middle" >C</text><rect x="558" y="178" width="30" height="30" rx="4" class="sqN"/><text x="573" y="198" class="tbg" text-anchor="middle" >A</text><rect x="592" y="178" width="30" height="30" rx="4" class="sqN"/><text x="607" y="198" class="tbg" text-anchor="middle" >A</text><rect x="626" y="178" width="30" height="30" rx="4" class="sqA"/><text x="641" y="198" class="tbg" text-anchor="middle" >B</text><rect x="660" y="178" width="30" height="30" rx="4" class="sqM"/><text x="675" y="198" class="tbg" text-anchor="middle" >C</text><text x="380" y="236" class="t ts tn" text-anchor="middle" >Updates pull in different directions and balance out, so the model learns all classes.</text><text x="380" y="266" class="t tb" text-anchor="middle" >Fix: DataLoader(..., shuffle=True) for training.</text></svg>
+<figcaption>Sorted data teaches one class at a time, and the model keeps overwriting what it learned. Shuffling mixes the classes in every batch.</figcaption>
+</figure>
+<p>Gradient descent assumes each batch is a fair sample of all the data. If batches arrive sorted, the model repeatedly learns class A, then forgets it while learning B, then forgets both while learning C. Always shuffle the training data. Be extra careful with files that are exported sorted.</p>
+<h3>The loss and what it expects</h3>
+<ul>
+<li><code>nn.CrossEntropyLoss</code> wants raw scores (logits) and integer class labels. It applies the softmax itself. A model that also applies softmax gets squashed outputs and a loss that can never go low.</li>
+<li><strong>Always look at the loss as well as the accuracy.</strong> Accuracy only cares which output is largest, so it can look healthy while the loss tells you something is wrong.</li>
+</ul>
+<h3>The learning rate</h3>
+<p>A <strong>learning rate range test</strong> trains briefly at several learning rates and looks at how fast the loss falls. Pick a value in the region where it falls quickly without blowing up. A rate that is far too high gives enormous losses, and one that is far too low barely moves the loss.</p>
+
+<h2 id="terms">8. Key terms</h2>
+<table>
+<tr><th>Term</th><th>Plain meaning</th></tr>
+<tr><td>Silent bug</td><td>A bug that gives no error but produces wrong results</td></tr>
+<tr><td>Data leakage</td><td>Test information reaching the training process</td></tr>
+<tr><td>Overfit one batch</td><td>A test that a correct model can nearly zero the loss on one small batch</td></tr>
+<tr><td>Baseline</td><td>A trivial predictor your model must beat</td></tr>
+<tr><td>Logits</td><td>Raw scores before any softmax</td></tr>
+<tr><td>train() / eval()</td><td>Switches that change how dropout and batch norm behave</td></tr>
+<tr><td>Learning rate range test</td><td>Trying several learning rates briefly to see which one works</td></tr>
+<tr><td>Shuffling</td><td>Randomizing the order of training examples each epoch</td></tr>
+</table>
+
+<h2 id="pitfalls">9. Common pitfalls</h2>
+<ul>
+<li>Changing the model before checking the data and the loss.</li>
+<li>Trusting accuracy and ignoring the loss.</li>
+<li>Believing a score that is too good to be true.</li>
+<li>Tuning a pipeline that cannot yet overfit one batch.</li>
+<li>Changing three things at once, so you cannot tell which one fixed the bug.</li>
+<li>Not writing down what the bug was, so you hit it again next month. That is what your checklist is for.</li>
+</ul>
+
+<h2 id="check">10. Check yourself</h2>
+<p>Try each question first, then open the answer.</p>
+<details><summary>Question 1: Your 3-class model's first loss is 4.7 instead of about 1.1. Name two things you would check.</summary><p>Check the scale of the inputs (huge unnormalized values make huge outputs), the learning rate and initialization, and that the labels are valid integers in the right range. A first loss far above ln(3) means the setup is off before training starts.</p></details>
+<details><summary>Question 2: You standardized the data with the mean and standard deviation of the whole dataset, then split it. Is that a problem?</summary><p>Yes, it is a (usually small) leak: the test rows influenced the preprocessing. Compute the statistics on the training rows only and apply them to the validation and test rows. It is a good habit even when the effect is small.</p></details>
+<details><summary>Question 3: The same model on the same data gives accuracy 0.91, then 0.89. What do you suspect?</summary><p>The model is still in training mode, so dropout is randomly switching units off. Call <code>model.eval()</code> before evaluating, and <code>torch.no_grad()</code> around it.</p></details>
+
+<h2>Next steps</h2>
+<ul>
+<li>Open the <a href="https://colab.research.google.com/github/panchadk/AIStartup/blob/main/module4_fix_broken_models.ipynb" target="_blank" rel="noopener">Module 4 notebook in Colab</a> and start debugging.</li>
+<li>Back to the <a href="https://panchadk.github.io/AIStartup/module4_page.html">Module 4 page</a>.</li>
+</ul>
+<div class="nav"><a href="https://panchadk.github.io/AIStartup/module3_notes.html">&larr; Previous: Module 3 notes</a><span></span></div>
+
+</body>
+</html>

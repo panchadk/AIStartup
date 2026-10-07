@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Module 4: Reference solution</title>
+<style>
+  :root { --navy: #1F3864; --ink: #222222; --bg: #FFFFFF; --code-bg: #F3F6FA; --warn-bg: #FFF4E5; --warn-edge: #E08A00; }
+  body { font-family: Arial, Helvetica, sans-serif; max-width: 860px; margin: 0 auto; padding: 24px; line-height: 1.6; color: var(--ink); background: var(--bg); }
+  h3 { color: var(--navy); border-bottom: 3px solid var(--navy); padding-bottom: 6px; }
+  h4 { color: var(--navy); margin-top: 28px; }
+  strong { color: var(--navy); }
+  code { font-family: Consolas, "Courier New", monospace; background: var(--code-bg); padding: 1px 4px; border-radius: 3px; }
+  pre { background: var(--code-bg); border-left: 4px solid var(--navy); padding: 14px; overflow-x: auto; border-radius: 4px; }
+  pre code { background: none; padding: 0; }
+  .banner { background: var(--warn-bg); border-left: 4px solid var(--warn-edge); padding: 12px 16px; border-radius: 4px; margin: 16px 0; }
+  table { border-collapse: collapse; width: 100%; margin: 12px 0; }
+  th, td { border: 1px solid #8A94A6; padding: 6px 10px; text-align: left; vertical-align: top; }
+  th { background: var(--code-bg); color: var(--navy); }
+  @media (prefers-color-scheme: dark) {
+    :root { --navy: #8FB4F0; --ink: #E6E6E6; --bg: #14181F; --code-bg: #1E2530; --warn-bg: #3A2C12; --warn-edge: #E0A040; }
+  }
+</style>
+</head>
+<body>
+<h3>Module 4: Reference solution</h3>
+<div class="banner"><strong>Try it yourself first.</strong> Open this page only after your own honest attempt. Finding the bug is the whole point of the module, and reading the answer first removes the learning. If you are stuck on one case, read only that case's &quot;how to find it&quot; steps.</div>
+<p>The five bugs below all share one trait: the code runs without an error. That is why you find them by <em>looking</em> (printing, plotting, comparing), not by waiting for a crash.</p>
+<h4>Case 1: leakage</h4>
+<p><strong>What you see:</strong> Test accuracy about 0.91, but fresh data gives about 0.75. A gap that large means the test set is not behaving like new data.</p>
+<p><strong>How to find it:</strong></p>
+<ol>
+<li>Compare the test score with a score on genuinely new data. They should be close. Here they are not.</li>
+<li>Ask what is special about this data: it contains <strong>5 copies</strong> of every original sample. A random split of rows puts copies of the same sample on both sides.</li>
+<li>Check directly: <code>set(groups[train_idx]) &amp; set(groups[test_idx])</code> is large (about 400 shared samples), so the model is partly being tested on rows it memorized.</li>
+</ol>
+<p><strong>The fix:</strong></p>
+<pre><code># split by ORIGINAL sample (group), so no sample has copies on both sides
+g = np.random.permutation(600)
+train_idx = np.where(np.isin(groups, g[:480]))[0]
+test_idx = np.where(np.isin(groups, g[480:]))[0]
+
+# standardize using the TRAINING rows only
+mean, std = X_raw[train_idx].mean(axis=0), X_raw[train_idx].std(axis=0)
+X = (X_raw - mean) / std</code></pre>
+<p><strong>Root cause (one line):</strong> Copies of the same sample ended up in both train and test, because I split rows instead of original samples. (A second, smaller leak: the scaler statistics used the test rows.)</p>
+<p><strong>The lesson:</strong> Whenever data has groups (patients, customers, augmented copies, frames of one video), split by group, never by row. After fixing it, the test score drops to an honest 0.69, and now matches the fresh score of about 0.74.</p>
+<h4>Case 2: stuck loss</h4>
+<p><strong>What you see:</strong> Validation accuracy about 0.89 looks fine, but the training loss stalls at about 0.61 instead of falling toward 0.15.</p>
+<p><strong>How to find it:</strong></p>
+<ol>
+<li>Look at the loss values, not just the accuracy. Accuracy only needs the largest output to be right.</li>
+<li>Print one row of <code>model(x)</code>. The three outputs add up to 1: they are already probabilities.</li>
+<li><code>nn.CrossEntropyLoss</code> applies a softmax itself, so the model's softmax is applied twice. The second softmax squashes the outputs, so even a perfect prediction gives a loss of about 0.55, which is the floor you see.</li>
+</ol>
+<p><strong>The fix:</strong></p>
+<pre><code># before:  nn.Linear(64, 3), nn.Softmax(dim=1))
+model = nn.Sequential(nn.Linear(10, 64), nn.ReLU(), nn.Linear(64, 3))</code></pre>
+<p><strong>Root cause (one line):</strong> The model applied softmax and CrossEntropyLoss applies it again, so the loss could not go below about 0.6.</p>
+<p><strong>The lesson:</strong> For classification, the model should output raw scores (logits). Apply softmax only when you want probabilities for display, never before CrossEntropyLoss. This bug is easy to miss because accuracy still looks fine.</p>
+<h4>Case 3: huge loss</h4>
+<p><strong>What you see:</strong> The loss starts at about 464 and ends near 20, and validation accuracy is about 0.34, barely above random guessing for 3 classes.</p>
+<p><strong>How to find it:</strong></p>
+<ol>
+<li>A 3-class model that guesses has a loss near 1.1. A loss of several hundred means the weights are being thrown far away on every step.</li>
+<li>The setting that controls the size of each step is the learning rate. Here it is 5.0, far too large for Adam.</li>
+<li>Run <code>lr_range_test([1e-4, 1e-3, 1e-2, 1e-1])</code>. The losses fall nicely for 1e-3 and 1e-2, and blow up at 1.0 and above.</li>
+</ol>
+<p><strong>The fix:</strong></p>
+<pre><code>LR = 3e-3      # chosen with lr_range_test</code></pre>
+<p><strong>Root cause (one line):</strong> The learning rate of 5.0 made every step huge, so the loss blew up instead of falling.</p>
+<p><strong>The lesson:</strong> Try a range of learning rates for a few epochs each and pick one in the region where the loss falls fastest without becoming unstable. For Adam, values between 1e-4 and 1e-2 are a common starting range.</p>
+<h4>Case 4: sorted data</h4>
+<p><strong>What you see:</strong> Validation accuracy is only about 0.65, although a good model gets about 0.92 on this problem.</p>
+<p><strong>How to find it:</strong></p>
+<ol>
+<li>Print the training labels: <code>y[:10]</code> are all 0 and <code>y[-10:]</code> are all 2. The rows are sorted by class.</li>
+<li>With <code>shuffle=False</code>, each epoch is about 30 batches of class 0, then 30 of class 1, then 30 of class 2. The last updates only teach the model about class 2, so it drifts toward predicting it.</li>
+<li>The DataLoader has a setting for the order of visits.</li>
+</ol>
+<p><strong>The fix:</strong></p>
+<pre><code>loader = to_loader(X, y, batch_size=32, shuffle=True)</code></pre>
+<p><strong>Root cause (one line):</strong> The training data was sorted by class and not shuffled, so the model kept forgetting earlier classes.</p>
+<p><strong>The lesson:</strong> Shuffle the training data every epoch. Do not shuffle validation or test data (it is not needed). Also beware of splits that take the &quot;last 20%&quot; of a sorted file.</p>
+<h4>Case 5: eval mode</h4>
+<p><strong>What you see:</strong> The first evaluation gives 0.347 and the second gives 0.350, for the same model and data. The model reached about 0.91 in training.</p>
+<p><strong>How to find it:</strong></p>
+<ol>
+<li>Evaluating the same model twice should give the identical number. The change means something random is active.</li>
+<li>The model has <strong>Dropout</strong> (random) and <strong>BatchNorm</strong> (uses batch statistics in training mode). In training mode both behave differently from evaluation.</li>
+<li>Worse, each validation batch holds examples of <strong>one class only</strong>, so in training mode BatchNorm normalizes with that class as the average, which wrecks the predictions. Training mode even keeps updating BatchNorm's running statistics during evaluation.</li>
+</ol>
+<p><strong>The fix:</strong></p>
+<pre><code>def evaluate5(model, loader):
+    model.eval()                      # switch dropout and batch norm to evaluation behaviour
+    correct, n = 0, 0
+    with torch.no_grad():             # no gradients needed when only predicting
+        for xb, yb in loader:
+            pred = model(xb).argmax(1)
+            correct += (pred == yb).sum().item()
+            n += len(yb)
+    return correct / n</code></pre>
+<p><strong>Root cause (one line):</strong> The model was left in training mode, so dropout and batch norm were active during evaluation.</p>
+<p><strong>The lesson:</strong> Always call <code>model.eval()</code> before evaluating and <code>torch.no_grad()</code> around it. Remember to call <code>model.train()</code> again before training resumes. A fit() function like the one from Module 3 does this for you.</p>
+<h4>A sample debugging checklist</h4>
+<p>Yours will differ, and that is fine. A good checklist is specific and checks the cheap things first.</p>
+<ol>
+<li>Print a batch: shapes, value ranges, labels.</li>
+<li>Check the order of the data and whether it is shuffled.</li>
+<li>Overfit one small batch first.</li>
+<li>Compare against a trivial baseline.</li>
+<li>Check that train, validation and test share no samples or copies.</li>
+<li>Fit scalers and other statistics on the training data only.</li>
+<li>Check the loss matches the output (raw logits for CrossEntropyLoss).</li>
+<li>Look at the loss values, not only the accuracy.</li>
+<li>Try a learning rate range test.</li>
+<li>Call model.eval() and torch.no_grad() when evaluating.</li>
+</ol>
+
+<h4>What to do next</h4>
+<ul>
+<li>Complete the three-line reflection and push your notebook to your portfolio repo.</li>
+<li>Take the Module 4 quiz in Moodle.</li>
+<li>Keep your checklist. From Module 5 on, every project you build can be debugged with it.</li>
+</ul>
+
+</body>
+</html>

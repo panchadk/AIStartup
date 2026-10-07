@@ -1,0 +1,37 @@
+// Module 4 quiz - Deep Learning for AI Startups
+$CATEGORY: $course$/Module 4
+
+::M4 Q1:: What does the overfit-one-batch test check? {
+~Final test accuracy
+=That the model and training loop can learn at all#A correct model and loop can drive the loss on one small batch to nearly zero. If not, something basic is broken.
+~GPU speed
+~Dataset size
+}
+
+::M4 Q2:: Which is an example of data leakage? {
+~Using augmentation on training images
+~Saving checkpoints
+=Normalizing with statistics computed on train and test combined before splitting#Information from the test data leaked into preprocessing. Compute statistics on the training data only.
+~Using a smaller batch
+}
+
+::M4 Q3:: Why call model.eval() before validation? {
+=Dropout and batch norm behave differently in training mode#In training mode dropout drops units and batch norm uses batch statistics, so evaluation would be random and wrong.
+~It speeds up the GPU
+~It resets weights
+~It shuffles the data
+}
+
+::M4 Q4:: A classifier outputs the same class for every input. Which is the best first check? {
+~Buy a bigger GPU
+~Add more layers
+~Delete the validation set
+=Inspect labels, data, and the learning rate#Start with the cheap checks: the data and labels, then the learning rate, before changing the model.
+}
+
+::M4 Q5:: Why compare against a simple baseline? {
+~To make training faster
+=To know whether your model adds real value#If a trivial baseline is as good as your model, the model is adding nothing, or something is wrong.
+~To avoid logging
+~To reduce parameters
+}

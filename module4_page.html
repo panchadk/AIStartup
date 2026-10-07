@@ -1,0 +1,45 @@
+<h3>Module 4: Fix the broken models</h3>
+<p><strong>Project:</strong> debug five broken training pipelines. Each has a different realistic bug that does not crash: the code runs, but the result is wrong. <strong>Time:</strong> about 6 hours core, plus about 3 hours for the stretch challenge.</p>
+<p><strong>Done when:</strong> all five self-checks pass, each case has a one-line root cause written by you, and you have written your own debugging checklist with at least 8 items.</p>
+<p><a href="https://colab.research.google.com/github/panchadk/AIStartup/blob/main/module4_fix_broken_models.ipynb" target="_blank" rel="noopener"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"></a></p>
+<p><em>Click the button to open the interactive notebook in Google Colab. Then choose File, Save a copy in Drive, and work in your own copy. No GPU is needed: every case runs in seconds on the CPU.</em></p>
+
+<p><strong>Lecture notes:</strong> <a href="https://panchadk.github.io/AIStartup/module4_notes.html" target="_blank" rel="noopener">read the illustrated notes</a> (about 20 minutes, with diagrams). Read them first, or return to them when you are stuck.</p>
+
+<h4>Notes (about 10 minutes)</h4>
+<ul>
+<li>Debug in order: <strong>data</strong> first, then the <strong>loss and labels</strong>, then the <strong>model</strong>, then the <strong>optimizer</strong>. Stop at the first thing that looks wrong.</li>
+<li><strong>Overfit one batch:</strong> a correct model and loop can drive the loss on a single small batch to nearly zero. If it cannot, something basic is broken.</li>
+<li>Common bugs: data leakage between train and test, the wrong loss for the task, forgetting <code>model.eval()</code> when evaluating, not shuffling, and a learning rate that is far too high or too low.</li>
+<li>Check shapes and value ranges at every stage. Print one batch and look at it.</li>
+<li>Compare against a trivial baseline. If you cannot beat it, something is wrong.</li>
+<li>The loss tells you more than the accuracy. A 3-class model that guesses has a loss of about 1.1 (the natural log of 3).</li>
+</ul>
+
+<h4>Exercises (all in the notebook)</h4>
+<ol>
+<li><strong>Case 1: leakage.</strong> A test score that is too good. Find why the test set is not honest and fix the split.</li>
+<li><strong>Case 2: stuck loss.</strong> Accuracy looks fine but the loss stalls. Find the loss and output mismatch.</li>
+<li><strong>Case 3: huge loss.</strong> The loss starts in the hundreds. Use a learning rate range test to fix it.</li>
+<li><strong>Case 4: sorted data.</strong> The model favours the last class it saw. Find the order bug.</li>
+<li><strong>Case 5: eval mode.</strong> The same model gives different scores each time. Fix the evaluation function.</li>
+<li><strong>Write a root cause</strong> in one line for each case: what was really wrong, not just what you changed.</li>
+<li><strong>Write your own debugging checklist</strong> with at least 8 items.</li>
+<li><strong>Stretch:</strong> plant a realistic bug in a pipeline and write the symptom story for a classmate to solve.</li>
+</ol>
+<p>The five cases are in one notebook, and you can do them in any order.</p>
+
+<h4>Hint ladder</h4>
+<ol>
+<li>Print and plot: the symptom is always visible if you look at the right thing.</li>
+<li>The three hints under each case in the notebook, opened one at a time.</li>
+<li>If a self-check fails, read its message: it points at the stage of the pipeline, not the exact line.</li>
+<li>Reference solution: open <a href="https://panchadk.github.io/AIStartup/module4_solution.html" target="_blank" rel="noopener">the solution page</a> only after your own honest attempt.</li>
+</ol>
+
+<h4>Before you submit</h4>
+<ul>
+<li>All five case self-checks and the notes self-check pass.</li>
+<li>Take the Module 4 quiz (pass mark 4 of 5).</li>
+<li>Push the notebook and a three-line reflection (what you fixed, which bug was hardest, the top 3 items of your checklist) to <code>module-04</code> in your portfolio repo, then submit the link in the assignment below.</li>
+</ul>
