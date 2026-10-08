@@ -1,0 +1,51 @@
+<h3>Module 7: RAG chatbot with citations</h3>
+<p><strong>Project:</strong> build a chatbot that answers questions from your own documents, shows its sources, and says "I don't know" when the documents do not contain the answer. <strong>Time:</strong> about 10 hours core, plus about 5 hours for the stretch challenge.</p>
+<p><strong>Done when:</strong> your chatbot answers 20 test questions (including 5 that your documents cannot answer) with at least 80% correct; every answer cites its sources; and you measured the token cost of an answer.</p>
+<p><a href="https://colab.research.google.com/github/panchadk/AIStartup/blob/main/module7_rag_chatbot.ipynb" target="_blank" rel="noopener"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"></a></p>
+<p><em>Click the button to open the interactive notebook in Google Colab. For the free open model, choose a GPU runtime. Then choose File, Save a copy in Drive, and work in your own copy.</em></p>
+
+<p><strong>Lecture notes:</strong> <a href="https://panchadk.github.io/AIStartup/module7_notes.html" target="_blank" rel="noopener">read the illustrated notes</a> (about 20 minutes, with diagrams). Read them first, or return to them when you are stuck.</p>
+
+<h4>Before you start</h4>
+<ul>
+<li><strong>Your Module 6 index.</strong> Upload <code>index_chunks.json</code> and <code>index_embeddings.npy</code> from Module 6. Without them the notebook rebuilds the index from <code>my_docs</code>.</li>
+<li><strong>A language model.</strong> The default is a free open model that runs in Colab (needs a GPU). Or use a hosted Claude model through the API: it answers better but needs an API key and costs a little per question. Keep the key in Colab's Secrets panel and <strong>never paste it into the notebook or push it to GitHub</strong>.</li>
+</ul>
+
+<h4>Notes (about 10 minutes)</h4>
+<ul>
+<li><strong>Retrieval-augmented generation (RAG)</strong> retrieves relevant passages first, then gives them to a language model as context for its answer.</li>
+<li>RAG lets a model use private or fresh data without retraining, and it reduces hallucination.</li>
+<li>A good prompt tells the model to <strong>answer only from the provided passages</strong>, to <strong>cite them</strong>, and to say <strong>"I don't know"</strong> when the answer is not there.</li>
+<li><strong>Retrieval comes first.</strong> If the right passage is not retrieved, the model cannot answer correctly.</li>
+<li>Cost scales with the number of <strong>tokens</strong> sent and generated. The retrieved passages are most of what you send.</li>
+<li>Test with questions the documents <strong>cannot</strong> answer, not just the ones they can.</li>
+</ul>
+
+<h4>Exercises (all in the notebook)</h4>
+<ol>
+<li><strong>Connect a language model</strong> and see how it answers <em>without</em> your documents.</li>
+<li><strong>Retrieve.</strong> Write <code>retrieve()</code> on top of your Module 6 search.</li>
+<li><strong>The prompt.</strong> Write <code>build_prompt()</code>: rules, numbered passages, then the question.</li>
+<li><strong>Citations.</strong> Write <code>extract_citations()</code>, then the full <code>answer()</code> with an optional score gate.</li>
+<li><strong>A test set</strong> of 20 questions, 5 of them unanswerable, and a <code>grade()</code> function.</li>
+<li><strong>Choose the gate</strong> (<code>MIN_SCORE</code>) by looking at retrieval scores.</li>
+<li><strong>Run the test.</strong> At least 80% correct, with a source for every answer.</li>
+<li><strong>Cost.</strong> Write <code>cost_estimate()</code> and work out the cost per question.</li>
+<li><strong>Stretch:</strong> log the cost per answer, add conversation memory, or compare models.</li>
+</ol>
+
+<h4>Hint ladder</h4>
+<ol>
+<li>The documentation of the library you use, and a web search.</li>
+<li>The written hints under each step in the notebook.</li>
+<li>If a self-check fails, read its message: each one names the most likely mistake.</li>
+<li>Reference solution: open <a href="https://panchadk.github.io/AIStartup/module7_solution.html" target="_blank" rel="noopener">the solution page</a> only after your own honest attempt.</li>
+</ol>
+
+<h4>Before you submit</h4>
+<ul>
+<li>Every self-check cell passes, including the accuracy and citation checks, and you wrote your analysis.</li>
+<li>Take the Module 7 quiz (pass mark 4 of 5).</li>
+<li>Push the notebook and a three-line reflection (what your chatbot knows and which model, your accuracy and biggest failure, your cost per question) to <code>module-07</code> in your portfolio repo. Do not push private documents or any API key. Then submit the link in the assignment below.</li>
+</ul>

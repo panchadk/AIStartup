@@ -1,0 +1,37 @@
+// Module 7 quiz - Deep Learning for AI Startups
+$CATEGORY: $course$/Module 7
+
+::M7 Q1:: What does RAG add to a language model? {
+=Retrieved context from your documents#RAG looks up relevant passages first and gives them to the model, so it can answer from your data.
+~More GPU memory
+~A bigger vocabulary
+~Automatic labeling
+}
+
+::M7 Q2:: Which step most limits answer quality in RAG? {
+~Choosing the font of the UI
+~The number of epochs
+=Retrieving the right passages#If the right passage is not retrieved, the model cannot answer correctly, whatever the prompt says.
+~Image augmentation
+}
+
+::M7 Q3:: How can you reduce hallucinations in a RAG prompt? {
+~Ask it to be creative
+~Remove the context
+~Increase temperature
+=Instruct the model to answer only from the context and admit when unsure#Grounding instructions, plus a clear way to say I don't know, keep the model from inventing answers.
+}
+
+::M7 Q4:: Why include citations? {
+~They shorten prompts
+=Users can verify answers and you can debug retrieval#A citation points to the passage behind the answer, so people can check it and you can see what retrieval found.
+~They train the model
+~They hide errors
+}
+
+::M7 Q5:: What mainly drives per-request cost in RAG? {
+=Tokens sent and generated#You pay for tokens in and out, and the retrieved passages make up most of the tokens sent.
+~Screen resolution
+~Number of users logged in
+~The programming language
+}

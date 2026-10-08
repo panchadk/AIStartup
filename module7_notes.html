@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Module 7 lecture notes: RAG chatbot with citations</title>
+<style>
+  :root { --navy:#1F3864;--ink:#222222;--bg:#FFFFFF;--code-bg:#F3F6FA;--hl-bg:#FFF4E5;--accent:#D9730D;--muted:#8A94A6; --muted-text:#555555; --good:#2E7D32; }
+  body { font-family: Arial, Helvetica, sans-serif; max-width: 860px; margin: 0 auto; padding: 24px; line-height: 1.65; color: var(--ink); background: var(--bg); }
+  h1 { color: var(--navy); margin-bottom: 4px; }
+  h2 { color: var(--navy); border-bottom: 3px solid var(--navy); padding-bottom: 6px; margin-top: 40px; }
+  h3 { color: var(--navy); margin-top: 26px; }
+  strong { color: var(--navy); }
+  a { color: var(--navy); }
+  .meta { color: var(--muted-text); margin-top: 0; }
+  code { font-family: Consolas, "Courier New", monospace; background: var(--code-bg); padding: 1px 4px; border-radius: 3px; }
+  pre { background: var(--code-bg); border-left: 4px solid var(--navy); padding: 14px; overflow-x: auto; border-radius: 4px; }
+  pre code { background: none; padding: 0; }
+  .toc { background: var(--code-bg); border-radius: 6px; padding: 12px 20px; }
+  .toc ol { margin: 6px 0; }
+  .note { background: var(--hl-bg); border-left: 4px solid var(--accent); padding: 12px 16px; border-radius: 4px; margin: 18px 0; }
+  .key { background: var(--code-bg); border-left: 4px solid var(--navy); padding: 12px 16px; border-radius: 4px; margin: 18px 0; }
+  figure { margin: 26px 0; }
+  figcaption { font-size: .9em; color: var(--muted-text); text-align: center; margin-top: 6px; }
+  svg.fig { width: 100%; height: auto; max-width: 760px; display: block; margin: 0 auto; }
+  table { border-collapse: collapse; width: 100%; margin: 14px 0; }
+  th, td { border: 1px solid var(--muted); padding: 7px 10px; text-align: left; vertical-align: top; }
+  th { background: var(--code-bg); color: var(--navy); }
+  details { background: var(--code-bg); border-radius: 6px; padding: 8px 14px; margin: 10px 0; }
+  summary { cursor: pointer; font-weight: bold; color: var(--navy); }
+  .nav { display: flex; justify-content: space-between; gap: 12px; margin-top: 40px; padding-top: 14px; border-top: 1px solid var(--muted); flex-wrap: wrap; }
+
+svg .box{fill:var(--code-bg);stroke:var(--navy);stroke-width:2}
+svg .box2{fill:var(--bg);stroke:var(--navy);stroke-width:2}
+svg .hl{fill:var(--hl-bg);stroke:var(--accent);stroke-width:2}
+svg .t{fill:var(--ink);font-family:Arial,Helvetica,sans-serif;font-size:14px}
+svg .tb{font-weight:bold}
+svg .ts{font-size:12px}
+svg .tl{font-size:16px}
+svg .tn{fill:var(--navy)}
+svg .ta{fill:var(--accent)}
+svg .tm{fill:var(--muted)}
+svg .ln{stroke:var(--navy);stroke-width:2.5;fill:none}
+svg .la{stroke:var(--accent);stroke-width:2.5;fill:none}
+svg .lg{stroke:var(--muted);stroke-width:1;fill:none;opacity:.55}
+svg .ax{stroke:var(--ink);stroke-width:1.5;fill:none}
+svg .fw{stroke:var(--navy);stroke-width:2.5;fill:none}
+svg .bw{stroke:var(--accent);stroke-width:2.5;fill:none}
+svg .dash{stroke-dasharray:6 4}
+svg .mN{fill:var(--navy)}
+svg .mA{fill:var(--accent)}
+svg .dotN{fill:var(--navy)}
+svg .dotA{fill:var(--accent)}
+svg .sqN{fill:var(--navy)}
+svg .sqA{fill:var(--accent)}
+svg .sqM{fill:var(--muted)}
+svg .tbg{fill:var(--bg);font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:bold}
+svg .node{fill:var(--bg);stroke:var(--navy);stroke-width:2}
+
+  @media (prefers-color-scheme: dark) {
+    :root { --navy:#8FB4F0;--ink:#E6E6E6;--bg:#14181F;--code-bg:#1E2530;--hl-bg:#3A2C12;--accent:#F0A040;--muted:#6B778C; --muted-text:#B5BCC8; --good:#66BB6A; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Module 7: RAG chatbot with citations</h1>
+<p class="meta">Lecture notes with diagrams. Reading time: about 25 minutes. Read once, then start the notebook. Come back here when a self-check fails or an answer looks wrong.</p>
+
+<div class="toc"><strong>In these notes</strong>
+<ol>
+<li><a href="#big">The big picture</a></li>
+<li><a href="#why">Why RAG?</a></li>
+<li><a href="#prompt">The prompt is the contract</a></li>
+<li><a href="#cite">Citations</a></li>
+<li><a href="#halluc">Controlling hallucination</a></li>
+<li><a href="#fail">Where RAG goes wrong</a></li>
+<li><a href="#test">Testing a RAG chatbot</a></li>
+<li><a href="#cost">What an answer costs</a></li>
+<li><a href="#model">Choosing a language model</a></li>
+<li><a href="#terms">Key terms</a>, <a href="#pitfalls">pitfalls</a>, and <a href="#check">check yourself</a></li>
+</ol></div>
+
+<h2 id="big">1. The big picture</h2>
+<p>In Module 6 you built a search engine: give it a question and it returns the passages most likely to contain the answer. A <strong>RAG chatbot</strong> adds one more step. It hands those passages to a <strong>language model</strong> and asks it to <em>write</em> the answer, using only what the passages say.</p>
+<figure>
+<svg class="fig" viewBox="0 0 760 255" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The RAG pipeline: question, retrieve, build prompt, language model, answer with citations"><defs><marker id="aN71" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA71" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><rect x="8" y="40" width="130" height="64" rx="8" class="box2"/><text x="73.0" y="68.0" class="t tb" text-anchor="middle" >Question</text><text x="73.0" y="86.0" class="t ts" text-anchor="middle" >in plain words</text><rect x="158" y="40" width="130" height="64" rx="8" class="hl"/><text x="223.0" y="68.0" class="t tb" text-anchor="middle" >Retrieve</text><text x="223.0" y="86.0" class="t ts" text-anchor="middle" >your Module 6 search</text><rect x="308" y="40" width="130" height="64" rx="8" class="box"/><text x="373.0" y="68.0" class="t tb" text-anchor="middle" >Build prompt</text><text x="373.0" y="86.0" class="t ts" text-anchor="middle" >rules + passages</text><rect x="458" y="40" width="130" height="64" rx="8" class="hl"/><text x="523.0" y="68.0" class="t tb" text-anchor="middle" >Language model</text><text x="523.0" y="86.0" class="t ts" text-anchor="middle" >writes the answer</text><rect x="608" y="40" width="130" height="64" rx="8" class="box2"/><text x="673.0" y="68.0" class="t tb" text-anchor="middle" >Answer</text><text x="673.0" y="86.0" class="t ts" text-anchor="middle" >with [citations]</text><line x1="138" y1="72" x2="156" y2="72" class="fw" marker-end="url(#aN71)"/><line x1="288" y1="72" x2="306" y2="72" class="fw" marker-end="url(#aN71)"/><line x1="438" y1="72" x2="456" y2="72" class="fw" marker-end="url(#aN71)"/><line x1="588" y1="72" x2="606" y2="72" class="fw" marker-end="url(#aN71)"/><text x="223" y="130" class="t ts tn" text-anchor="middle" >R = Retrieval</text><text x="523" y="130" class="t ts ta" text-anchor="middle" >G = Generation</text><text x="380" y="24" class="t tb tn" text-anchor="middle" >RAG = Retrieval-Augmented Generation</text><rect x="8" y="170" width="360" height="64" rx="8" class="box2"/><text x="188.0" y="198.0" class="t tb" text-anchor="middle" >Retrieval decides WHAT the model may use</text><text x="188.0" y="216.0" class="t ts" text-anchor="middle" >wrong passages in means a wrong answer out</text><rect x="392" y="170" width="360" height="64" rx="8" class="box2"/><text x="572.0" y="198.0" class="t tb" text-anchor="middle" >The prompt decides HOW it may use it</text><text x="572.0" y="216.0" class="t ts" text-anchor="middle" >only these passages, cite them, or say I don't know</text></svg>
+<figcaption>RAG has two halves. Retrieval picks the evidence, and generation turns it into an answer. Each half can fail on its own.</figcaption>
+</figure>
+<p>Think of it as an open-book exam. The model is the student, your documents are the book, and your search engine is the student's index. A good student looks things up and quotes the page. A bad one answers from memory and hopes.</p>
+
+<h2 id="why">2. Why RAG?</h2>
+<p>A language model on its own has three problems for a business product:</p>
+<ul>
+<li><strong>It has never seen your documents.</strong> Your policies, your manuals, your customers' data are not in its training.</li>
+<li><strong>Its knowledge is frozen.</strong> It knows nothing that happened after it was trained.</li>
+<li><strong>It can <em>hallucinate</em>.</strong> When it does not know, it often produces a fluent, confident, false answer, and it cannot tell you where the answer came from.</li>
+</ul>
+<figure>
+<svg class="fig" viewBox="0 0 760 295" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A language model alone guesses, while retrieval grounds its answer in your documents"><defs><marker id="aN72" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA72" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><text x="190" y="22" class="t tb tn" text-anchor="middle" >Language model alone</text><text x="570" y="22" class="t tb tn" text-anchor="middle" >With retrieval (RAG)</text><rect x="20" y="40" width="340" height="50" rx="8" class="box2"/><text x="190.0" y="70.0" class="t tb" text-anchor="middle" >Question about YOUR documents</text><line x1="190" y1="90" x2="190" y2="118" class="fw" marker-end="url(#aN72)"/><rect x="20" y="120" width="340" height="60" rx="8" class="box"/><text x="190.0" y="146.0" class="t tb" text-anchor="middle" >Language model</text><text x="190.0" y="164.0" class="t ts" text-anchor="middle" >has never seen your documents</text><line x1="190" y1="180" x2="190" y2="208" class="fw" marker-end="url(#aN72)"/><rect x="20" y="210" width="340" height="62" rx="8" class="hl"/><text x="190.0" y="237.0" class="t tb" text-anchor="middle" >A confident guess</text><text x="190.0" y="255.0" class="t ts" text-anchor="middle" >no sources, cannot be checked</text><line x1="380" y1="35" x2="380" y2="280" class="lg" style="opacity:1"/><rect x="400" y="40" width="340" height="50" rx="8" class="box2"/><text x="570.0" y="70.0" class="t tb" text-anchor="middle" >Question about YOUR documents</text><line x1="570" y1="90" x2="570" y2="118" class="fw" marker-end="url(#aN72)"/><rect x="400" y="120" width="340" height="60" rx="8" class="box"/><text x="570.0" y="146.0" class="t tb" text-anchor="middle" >Search your documents first</text><text x="570.0" y="164.0" class="t ts" text-anchor="middle" >pass the best passages to the model</text><line x1="570" y1="180" x2="570" y2="208" class="fw" marker-end="url(#aN72)"/><rect x="400" y="210" width="340" height="62" rx="8" class="box2"/><text x="570.0" y="237.0" class="t tb" text-anchor="middle" >An answer grounded in YOUR text</text><text x="570.0" y="255.0" class="t ts" text-anchor="middle" >with sources you can open and check</text></svg>
+<figcaption>The same question, with and without retrieval. The RAG version is grounded in text you can open and check.</figcaption>
+</figure>
+<p>RAG fixes all three <strong>without retraining the model</strong>. To change what the chatbot knows, you change the documents, not the model. That is why it is the most common pattern in AI products today.</p>
+
+<h2 id="prompt">3. The prompt is the contract</h2>
+<p>The model does exactly what its prompt asks, so the prompt must spell out the rules. It has two parts: a <strong>system message</strong> with the rules, and a <strong>user message</strong> with the evidence and the question.</p>
+<figure>
+<svg class="fig" viewBox="0 0 760 345" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Anatomy of a RAG prompt: rules in the system message, numbered passages and the question in the user message, and an answer with a citation"><defs><marker id="aN73" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA73" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><rect x="10" y="10" width="740" height="82" rx="8" class="hl"/><text x="24" y="34" class="t tb ta" text-anchor="start" >SYSTEM MESSAGE: the rules</text><text x="24" y="56" class="t ts" text-anchor="start" >Answer ONLY from the numbered passages. Cite them like [1] or [2].</text><text x="24" y="76" class="t ts" text-anchor="start" >If the answer is not there, reply exactly: I don't know based on the documents.</text><rect x="10" y="104" width="740" height="150" rx="8" class="box"/><text x="24" y="128" class="t tb tn" text-anchor="start" >USER MESSAGE: the evidence, then the question</text><rect x="24" y="136" width="34" height="20" rx="3" class="sqN"/><text x="41" y="151" class="tbg" text-anchor="middle" >[1]</text><text x="66" y="151" class="t ts" text-anchor="start" >(source: re.txt)  re.split: Split the source string by the occurrences of the pattern...</text><rect x="24" y="160" width="34" height="20" rx="3" class="sqN"/><text x="41" y="175" class="tbg" text-anchor="middle" >[2]</text><text x="66" y="175" class="t ts" text-anchor="start" >(source: textwrap.txt)  textwrap.wrap: Wrap a single paragraph of text, returning a list of lines...</text><rect x="24" y="184" width="34" height="20" rx="3" class="sqN"/><text x="41" y="199" class="tbg" text-anchor="middle" >[3]</text><text x="66" y="199" class="t ts" text-anchor="start" >(source: json.txt)  json.loads: Deserialize a str containing a JSON document to a Python object...</text><text x="24" y="236" class="t ts tb" text-anchor="start" >QUESTION: How do I cut a string into pieces wherever a pattern occurs?</text><line x1="380" y1="256" x2="380" y2="280" class="fw" marker-end="url(#aN73)"/><rect x="10" y="282" width="740" height="50" rx="8" class="box2"/><text x="24" y="304" class="t tb tn" text-anchor="start" >MODEL OUTPUT:</text><text x="160" y="304" class="t" text-anchor="start" >Use re.split, which splits a string at each match of the pattern. [1]</text><text x="24" y="324" class="t ts tm" text-anchor="start" >A citation like [1] can be turned into a real source: file re.txt, passage 1.</text></svg>
+<figcaption>A RAG prompt. The passages are numbered so that the answer can cite them.</figcaption>
+</figure>
+<p>A good RAG system message says four things:</p>
+<ol>
+<li><strong>Use only the passages.</strong> The word "only" matters. Without it, the model mixes in its own knowledge.</li>
+<li><strong>Cite by number</strong> in square brackets.</li>
+<li><strong>If the answer is not in the passages, say a fixed sentence.</strong> Giving the exact words lets your code detect an abstention reliably.</li>
+<li><strong>Keep it short.</strong> Shorter answers cost less and are easier to check.</li>
+</ol>
+<p>The order inside the user message also matters: evidence first, question last. Many models pay most attention to the end of the prompt.</p>
+
+<h2 id="cite">4. Citations</h2>
+<p>A <strong>citation</strong> connects a claim to its source. In this module the model writes passage numbers like <code>[2]</code>, and <em>your code</em> turns each number into the real source: the document name and the passage text.</p>
+<ul>
+<li><strong>Users can verify.</strong> A person can open the source and check the answer. That is what makes a chatbot trustworthy.</li>
+<li><strong>You can debug.</strong> If a bad answer cites an unrelated passage, you know the problem is in generation. If it cites nothing useful, look at retrieval.</li>
+<li><strong>Parse defensively.</strong> Models write <code>[2]</code>, <code>[1, 3]</code>, and sometimes numbers that do not exist. Accept lists, and ignore numbers out of range.</li>
+<li><strong>A citation is a claim, not proof.</strong> The model can cite a passage that does not actually support its answer. That is why the grading in this module checks that the <em>cited</em> passage contains the right information.</li>
+</ul>
+
+<h2 id="halluc">5. Controlling hallucination</h2>
+<p>You cannot make a model incapable of hallucinating, but you can make it much less likely. Use three layers:</p>
+<ol>
+<li><strong>The prompt:</strong> "only the passages" and a fixed "I don't know" sentence.</li>
+<li><strong>The gate:</strong> before calling the model at all, look at the best retrieval score. If even the best passage is not similar to the question, the documents probably do not cover it. Skip the model and answer "I don't know" directly. This is both safer and cheaper.</li>
+<li><strong>Checking:</strong> verify that answers cite real passages, and test with questions the documents cannot answer.</li>
+</ol>
+<figure>
+<svg class="fig" viewBox="0 0 760 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Best retrieval scores of answerable and unanswerable questions with a MIN_SCORE threshold between them"><defs><marker id="aN75" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA75" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><line x1="60" y1="120" x2="720" y2="120" class="ax"/><line x1="60" y1="180" x2="720" y2="180" class="ax"/><text x="60" y="96" class="t ts tb tn" text-anchor="start" >answerable questions</text><text x="60" y="156" class="t ts tb ta" text-anchor="start" >unanswerable questions</text><circle cx="337.2" cy="120" r="6" class="sqN"/><circle cx="363.6" cy="120" r="6" class="sqN"/><circle cx="390.0" cy="120" r="6" class="sqN"/><circle cx="403.2" cy="120" r="6" class="sqN"/><circle cx="423.0" cy="120" r="6" class="sqN"/><circle cx="436.2" cy="120" r="6" class="sqN"/><circle cx="456.0" cy="120" r="6" class="sqN"/><circle cx="475.8" cy="120" r="6" class="sqN"/><circle cx="495.6" cy="120" r="6" class="sqN"/><circle cx="528.6" cy="120" r="6" class="sqN"/><circle cx="376.8" cy="120" r="6" class="sqN"/><circle cx="442.8" cy="120" r="6" class="sqN"/><circle cx="139.2" cy="180" r="6" class="sqA"/><circle cx="178.8" cy="180" r="6" class="sqA"/><circle cx="205.2" cy="180" r="6" class="sqA"/><circle cx="238.2" cy="180" r="6" class="sqA"/><circle cx="264.6" cy="180" r="6" class="sqA"/><circle cx="310.8" cy="180" r="6" class="sqA"/><circle cx="192.0" cy="180" r="6" class="sqA"/><line x1="324.0" y1="70" x2="324.0" y2="215" class="la dash"/><text x="324.0" y="62" class="t ts tb ta" text-anchor="middle" >MIN_SCORE</text><text x="316.0" y="235" class="t ts tm" text-anchor="end" >below the line:</text><text x="316.0" y="251" class="t ts tm" text-anchor="end" >do not call the model</text><text x="332.0" y="235" class="t ts tm" text-anchor="start" >above the line:</text><text x="332.0" y="251" class="t ts tm" text-anchor="start" >let the model try</text><text x="60" y="285" class="t ts tm" text-anchor="middle" >0.0</text><text x="192.0" y="285" class="t ts tm" text-anchor="middle" >0.2</text><text x="324.0" y="285" class="t ts tm" text-anchor="middle" >0.4</text><text x="456.0" y="285" class="t ts tm" text-anchor="middle" >0.6</text><text x="588.0" y="285" class="t ts tm" text-anchor="middle" >0.8</text><text x="720.0" y="285" class="t ts tm" text-anchor="middle" >1.0</text><text x="390" y="305" class="t ts tm" text-anchor="middle" >best retrieval score for the question</text><text x="380" y="28" class="t ts" text-anchor="middle" >Pick the line so almost no answerable question is blocked and most unanswerable ones are</text></svg>
+<figcaption>Best retrieval scores for answerable and unanswerable questions. The gate is a line between them.</figcaption>
+</figure>
+<p>Choosing the line is a trade-off. Set it too high and you block questions that the documents could answer. Set it too low and unanswerable questions slip through to the model. Look at your own scores, and pick a line that blocks almost no answerable question.</p>
+
+<h2 id="fail">6. Where RAG goes wrong</h2>
+<figure>
+<svg class="fig" viewBox="0 0 760 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four failure points of a RAG chatbot: retrieval miss, ignored evidence, missing citation, answering when it should not"><defs><marker id="aN74" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA74" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><rect x="8" y="34" width="130" height="44" rx="8" class="box"/><text x="73.0" y="61.0" class="t tb" text-anchor="middle" >Retrieve</text><rect x="158" y="34" width="130" height="44" rx="8" class="box"/><text x="223.0" y="61.0" class="t tb" text-anchor="middle" >Prompt</text><rect x="308" y="34" width="130" height="44" rx="8" class="box"/><text x="373.0" y="61.0" class="t tb" text-anchor="middle" >Generate</text><rect x="458" y="34" width="130" height="44" rx="8" class="box"/><text x="523.0" y="61.0" class="t tb" text-anchor="middle" >Cite</text><rect x="608" y="34" width="130" height="44" rx="8" class="box"/><text x="673.0" y="61.0" class="t tb" text-anchor="middle" >Abstain</text><line x1="138" y1="56" x2="156" y2="56" class="fw" marker-end="url(#aN74)"/><line x1="288" y1="56" x2="306" y2="56" class="fw" marker-end="url(#aN74)"/><line x1="438" y1="56" x2="456" y2="56" class="fw" marker-end="url(#aN74)"/><line x1="588" y1="56" x2="606" y2="56" class="fw" marker-end="url(#aN74)"/><text x="380" y="20" class="t tb tn" text-anchor="middle" >Four places a RAG chatbot goes wrong</text><rect x="8" y="100" width="364" height="76" rx="8" class="box"/><circle cx="32" cy="124" r="13" class="sqA"/><text x="32" y="129" class="tbg" text-anchor="middle" >1</text><text x="54" y="129" class="t tb" text-anchor="start" >Retrieval miss</text><text x="22" y="152" class="t ts" text-anchor="start" >The right passage is not in the top k.</text><text x="22" y="168" class="t ts tn" text-anchor="start" >Fix: larger k, better chunks, better query.</text><rect x="388" y="100" width="364" height="76" rx="8" class="box"/><circle cx="412" cy="124" r="13" class="sqA"/><text x="412" y="129" class="tbg" text-anchor="middle" >2</text><text x="434" y="129" class="t tb" text-anchor="start" >Ignored evidence</text><text x="402" y="152" class="t ts" text-anchor="start" >The model uses its own memory or misreads.</text><text x="402" y="168" class="t ts tn" text-anchor="start" >Fix: stricter prompt, or a bigger model.</text><rect x="8" y="190" width="364" height="76" rx="8" class="box"/><circle cx="32" cy="214" r="13" class="sqA"/><text x="32" y="219" class="tbg" text-anchor="middle" >3</text><text x="54" y="219" class="t tb" text-anchor="start" >Missing or wrong citation</text><text x="22" y="242" class="t ts" text-anchor="start" >No [n], or an [n] that does not support it.</text><text x="22" y="258" class="t ts tn" text-anchor="start" >Fix: demand citations, then check them.</text><rect x="388" y="190" width="364" height="76" rx="8" class="box"/><circle cx="412" cy="214" r="13" class="sqA"/><text x="412" y="219" class="tbg" text-anchor="middle" >4</text><text x="434" y="219" class="t tb" text-anchor="start" >Answers when it should not</text><text x="402" y="242" class="t ts" text-anchor="start" >A guess for a question the documents cannot answer.</text><text x="402" y="258" class="t ts tn" text-anchor="start" >Fix: min_score gate and an abstain rule.</text><text x="380" y="302" class="t tb" text-anchor="middle" >Debugging rule: first ask whether retrieval found the right passage.</text><text x="380" y="324" class="t ts" text-anchor="middle" >If it did not, no prompt can save the answer. If it did, look at the prompt and the model.</text></svg>
+<figcaption>Four failure points. Always check retrieval first: if the right passage was not retrieved, nothing downstream can fix it.</figcaption>
+</figure>
+<p>When an answer is wrong, ask the questions in this order:</p>
+<ol>
+<li><strong>Was the right passage in the retrieved set?</strong> If not, it is a retrieval problem: larger <code>k</code>, better chunks, or the information is not in your documents.</li>
+<li><strong>If it was there, did the model use it?</strong> If not, strengthen the prompt, or use a stronger model.</li>
+<li><strong>Is the citation present and correct?</strong></li>
+<li><strong>For an unanswerable question: did it abstain?</strong> If not, raise the gate and tighten the abstain rule.</li>
+</ol>
+<p>This order is the same debugging discipline as Module 4: start with the data (here, the retrieved evidence), and only then blame the model.</p>
+
+<h2 id="test">7. Testing a RAG chatbot</h2>
+<p>Write a test set with <strong>two kinds of questions</strong>:</p>
+<ul>
+<li><strong>Answerable</strong> (for example 15): each with a gold phrase that marks the right passage. A correct response answers <em>and</em> cites a passage containing the gold phrase.</li>
+<li><strong>Unanswerable</strong> (for example 5): plausible questions the documents do not cover. A correct response is "I don't know".</li>
+</ul>
+<p>The unanswerable questions are not a detail. A chatbot that always answers will score well on the answerable questions and fail the one thing users care about: not being misled.</p>
+<div class="note"><strong>The automatic score is a proxy.</strong> It checks the sources, not the wording. An answer can cite the right passage and still say something slightly wrong. So also read a sample of the answers yourself and judge whether the cited passage really supports what was said. Automatic scores find the problems; reading the answers explains them.</div>
+
+<h2 id="cost">8. What an answer costs</h2>
+<p>Language models are priced by <strong>tokens</strong> (pieces of words), usually per million. You pay for the tokens you send in and the tokens that come out, at different prices.</p>
+<figure>
+<svg class="fig" viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Token breakdown of a RAG request: the retrieved passages dominate the input tokens"><defs><marker id="aN76" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA76" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><text x="380" y="22" class="t tb tn" text-anchor="middle" >Tokens you pay for in one answer (illustrative)</text><text x="10" y="70" class="t tb" text-anchor="start" >k = 4</text><rect x="160.0" y="50" width="63.0" height="30" rx="3" class="sqM"/><text x="191.5" y="70" class="tbg" text-anchor="middle" >rules</text><rect x="223.0" y="50" width="324.0" height="30" rx="3" class="sqN"/><text x="385.0" y="70" class="tbg" text-anchor="middle" >4 passages</text><rect x="547.0" y="50" width="18.0" height="30" rx="3" class="sqA"/><rect x="575.0" y="50" width="36.0" height="30" rx="3" class="sqM" style="opacity:.55"/><text x="617.0" y="70" class="t ts" text-anchor="start" >answer 40</text><text x="160" y="100" class="t ts tn" text-anchor="start" >input: 450 tokens</text><text x="10" y="150" class="t tb" text-anchor="start" >k = 2</text><rect x="160.0" y="130" width="63.0" height="30" rx="3" class="sqM"/><text x="191.5" y="150" class="tbg" text-anchor="middle" >rules</text><rect x="223.0" y="130" width="162.0" height="30" rx="3" class="sqN"/><text x="304.0" y="150" class="tbg" text-anchor="middle" >2 passages</text><rect x="385.0" y="130" width="18.0" height="30" rx="3" class="sqA"/><rect x="413.0" y="130" width="36.0" height="30" rx="3" class="sqM" style="opacity:.55"/><text x="455.0" y="150" class="t ts" text-anchor="start" >answer 40</text><text x="160" y="180" class="t ts tn" text-anchor="start" >input: 270 tokens</text><text x="380" y="226" class="t tb" text-anchor="middle" >The retrieved passages are most of what you send, so most of what you pay for.</text><text x="380" y="250" class="t ts" text-anchor="middle" >Fewer or shorter passages, or a cheaper model, cut the cost. Too few, and accuracy drops.</text><rect x="160" y="270" width="18" height="14" class="sqM"/><text x="184" y="282" class="t ts" text-anchor="start" >rules</text><rect x="240" y="270" width="18" height="14" class="sqN"/><text x="264" y="282" class="t ts" text-anchor="start" >passages</text><rect x="340" y="270" width="18" height="14" class="sqA"/><text x="364" y="282" class="t ts" text-anchor="start" >question</text></svg>
+<figcaption>The retrieved passages are most of the input. Halving k nearly halves the input.</figcaption>
+</figure>
+<p>A worked example with <em>hypothetical</em> prices of 1 dollar per million input tokens and 5 dollars per million output tokens (always check your provider's real, current prices):</p>
+<pre><code>k = 4:  450 tokens in, 40 tokens out
+        450/1,000,000 x 1  +  40/1,000,000 x 5  =  0.00045 + 0.00020  =  $0.00065 per question
+        10,000 questions  ->  $6.50
+
+k = 2:  270 tokens in, 40 tokens out
+        0.00027 + 0.00020  =  $0.00047 per question
+        10,000 questions  ->  $4.70</code></pre>
+<p>Ways to reduce the cost: fewer or shorter passages, the score gate (no call at all for questions you cannot answer), a smaller or cheaper model, and a shorter answer limit. But measure what each change does to accuracy, because cheap and wrong is not a saving.</p>
+
+<h2 id="model">9. Choosing a language model</h2>
+<table>
+<tr><th></th><th>Small open model (runs in Colab)</th><th>Hosted model (API)</th></tr>
+<tr><td><strong>Price</strong></td><td>Free to run (uses your GPU time)</td><td>Pay per token</td></tr>
+<tr><td><strong>Following instructions</strong></td><td>Weaker. May ignore the citation format or answer outside the passages</td><td>Much stronger</td></tr>
+<tr><td><strong>Privacy</strong></td><td>Your data stays in your session</td><td>Your text is sent to the provider: read their data terms</td></tr>
+<tr><td><strong>Setup</strong></td><td>Download the model; needs a GPU</td><td>An API key, kept secret</td></tr>
+<tr><td><strong>Speed and reliability</strong></td><td>Depends on your hardware</td><td>Fast and consistent</td></tr>
+</table>
+<p>A startup usually prototypes with whatever is cheapest to try, measures with a test set like yours, and then chooses the model that meets its quality target at an acceptable cost. That is exactly the comparison in the stretch challenge, and it leads to the next module.</p>
+<div class="note"><strong>Keep your keys secret.</strong> An API key is like a password that spends your money. Store it in Colab's Secrets panel, never in the notebook text, and never commit it to GitHub.</div>
+
+<h2 id="terms">10. Key terms</h2>
+<table>
+<tr><th>Term</th><th>Plain meaning</th></tr>
+<tr><td>RAG</td><td>Retrieve relevant passages, then generate an answer from them</td></tr>
+<tr><td>Hallucination</td><td>A fluent, confident answer that is not supported by the facts</td></tr>
+<tr><td>Grounding</td><td>Tying the answer to supplied evidence</td></tr>
+<tr><td>System message</td><td>The rules you give the model, separate from the user's question</td></tr>
+<tr><td>Citation</td><td>A pointer from a claim to the passage that supports it</td></tr>
+<tr><td>Abstain</td><td>Say "I don't know" instead of guessing</td></tr>
+<tr><td>Gate (min_score)</td><td>A retrieval-score limit below which the model is not called</td></tr>
+<tr><td>Token</td><td>A piece of text: the unit that models read, write and bill by</td></tr>
+</table>
+
+<h2 id="pitfalls">11. Common pitfalls</h2>
+<ul>
+<li>A prompt that does not say "only", so the model mixes in outside knowledge.</li>
+<li>No fixed abstain sentence, so abstentions cannot be detected.</li>
+<li>Parsing only <code>[n]</code> and missing <code>[n, m]</code>, or trusting numbers that do not exist.</li>
+<li>Tuning the prompt when the real problem is that retrieval missed.</li>
+<li>Testing only questions the documents can answer.</li>
+<li>Embedding questions with a different model than the documents.</li>
+<li>Leaking an API key into a notebook or a repository.</li>
+</ul>
+
+<h2 id="check">12. Check yourself</h2>
+<p>Try each question first, then open the answer.</p>
+<details><summary>Question 1: Retrieval returned the right passage, but the chatbot's answer is wrong. Where is the problem?</summary><p>In generation: the model ignored or misread the evidence. Strengthen the prompt (only the passages, cite them), or use a stronger model. Changing the chunking or the search would not help, because retrieval already did its job.</p></details>
+<details><summary>Question 2: The chatbot gives a confident answer, with a citation, to a question the documents cannot answer. Name two defences.</summary><p>(1) The score gate: if the best retrieval score is below <code>min_score</code>, do not call the model and abstain. (2) A stricter prompt with a fixed &quot;I don&#39;t know&quot; sentence. You can also check whether the cited passage really supports the answer, and add more unanswerable questions to your tests.</p></details>
+<details><summary>Question 3: A prompt has 70 tokens of rules, 4 passages of 90 tokens each, a 20-token question, and the answer has 40 tokens. With hypothetical prices of 1 and 5 dollars per million input and output tokens, what does one answer cost, and what do 10,000 cost?</summary><p>Input = 70 + 360 + 20 = 450 tokens. Cost = 450/1,000,000 x 1 + 40/1,000,000 x 5 = 0.00045 + 0.0002 = <strong>$0.00065</strong>. For 10,000 questions that is <strong>$6.50</strong>.</p></details>
+
+<h2>Next steps</h2>
+<ul>
+<li>Open the <a href="https://colab.research.google.com/github/panchadk/AIStartup/blob/main/module7_rag_chatbot.ipynb" target="_blank" rel="noopener">Module 7 notebook in Colab</a> and start building.</li>
+<li>Back to the <a href="https://panchadk.github.io/AIStartup/module7_page.html">Module 7 page</a>.</li>
+</ul>
+<div class="nav"><a href="https://panchadk.github.io/AIStartup/module6_notes.html">&larr; Previous: Module 6 notes</a><span></span></div>
+
+</body>
+</html>

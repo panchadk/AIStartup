@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Module 7: Reference solution</title>
+<style>
+  :root { --navy: #1F3864; --ink: #222222; --bg: #FFFFFF; --code-bg: #F3F6FA; --warn-bg: #FFF4E5; --warn-edge: #E08A00; }
+  body { font-family: Arial, Helvetica, sans-serif; max-width: 860px; margin: 0 auto; padding: 24px; line-height: 1.6; color: var(--ink); background: var(--bg); }
+  h3 { color: var(--navy); border-bottom: 3px solid var(--navy); padding-bottom: 6px; }
+  h4 { color: var(--navy); margin-top: 28px; }
+  strong { color: var(--navy); }
+  code { font-family: Consolas, "Courier New", monospace; background: var(--code-bg); padding: 1px 4px; border-radius: 3px; }
+  pre { background: var(--code-bg); border-left: 4px solid var(--navy); padding: 14px; overflow-x: auto; border-radius: 4px; }
+  pre code { background: none; padding: 0; }
+  .banner { background: var(--warn-bg); border-left: 4px solid var(--warn-edge); padding: 12px 16px; border-radius: 4px; margin: 16px 0; }
+  @media (prefers-color-scheme: dark) {
+    :root { --navy: #8FB4F0; --ink: #E6E6E6; --bg: #14181F; --code-bg: #1E2530; --warn-bg: #3A2C12; --warn-edge: #E0A040; }
+  }
+</style>
+</head>
+<body>
+<h3>Module 7: Reference solution</h3>
+<div class="banner"><strong>Try it yourself first.</strong> Open this page only after your own honest attempt. If a self-check is failing, read its message again and compare one function at a time. Matching line for line is not required: if every self-check passes, your solution is correct.</div>
+<h4>Step 2: retrieve</h4>
+<p>Your Module 6 search, with the results packaged as dictionaries. Converting to plain Python <code>int</code> and <code>float</code> avoids NumPy types leaking into your results.</p>
+<pre><code>def retrieve(question, k=4):
+    idx, scores = top_k(embed([question])[0], chunk_embs, k)
+    return [{&quot;id&quot;: int(i), &quot;source&quot;: chunk_sources[i], &quot;text&quot;: chunk_texts[i], &quot;score&quot;: float(s)}
+            for i, s in zip(idx, scores)]</code></pre>
+<h4>Step 3: the prompt</h4>
+<p>The rules go in the system message. The evidence comes before the question in the user message, and every passage has a number so that the model can cite it. The exact abstain sentence appears in the rules so that the model knows what to say, and so that your code can recognize it.</p>
+<pre><code>ABSTAIN = &quot;I don&#x27;t know based on the documents.&quot;
+
+def build_prompt(question, passages):
+    system = (&quot;You answer questions using ONLY the numbered passages provided by the user. &quot;
+              &quot;Cite the passages you used with their numbers in square brackets, like [1] or [2]. &quot;
+              f&quot;If the passages do not contain the answer, reply exactly: {ABSTAIN} &quot;
+              &quot;Do not use outside knowledge. Keep the answer short.&quot;)
+    blocks = [f&quot;[{i}] (source: {p[&#x27;source&#x27;]})\n{p[&#x27;text&#x27;]}&quot; for i, p in enumerate(passages, 1)]
+    user = &quot;\n\n&quot;.join(blocks) + f&quot;\n\nQUESTION: {question}&quot;
+    return system, user</code></pre>
+<h4>Step 4: citations and the full answer</h4>
+<p>A model may write <code>[2]</code> or <code>[1, 3]</code>, and sometimes invents a number that does not exist, so the extraction accepts lists and ignores numbers out of range. In <code>answer()</code>, the gate comes before the model call, which saves the cost of the call and removes one chance to hallucinate. An abstention carries no citations, even if the text contains a bracket.</p>
+<pre><code>def extract_citations(text, passages):
+    cited, seen = [], set()
+    for group in re.findall(r&quot;\[([\d,\s]+)\]&quot;, text):
+        for part in group.split(&quot;,&quot;):
+            part = part.strip()
+            if part.isdigit():
+                n = int(part)
+                if 1 &lt;= n &lt;= len(passages) and n not in seen:
+                    seen.add(n); cited.append(passages[n - 1])
+    return cited
+
+def answer(question, k=4, min_score=0.0):
+    passages = retrieve(question, k)
+    if not passages or passages[0][&quot;score&quot;] &lt; min_score:
+        return {&quot;question&quot;: question, &quot;answer&quot;: ABSTAIN, &quot;abstained&quot;: True, &quot;citations&quot;: [], &quot;passages&quot;: passages,
+                &quot;input_tokens&quot;: 0, &quot;output_tokens&quot;: 0}
+    system, user = build_prompt(question, passages)
+    reply = generate(system, user)
+    text = reply[&quot;text&quot;]
+    abstained = text.strip().lower().startswith(&quot;i don&#x27;t know&quot;)
+    return {&quot;question&quot;: question, &quot;answer&quot;: text, &quot;abstained&quot;: abstained,
+            &quot;citations&quot;: [] if abstained else extract_citations(text, passages),
+            &quot;passages&quot;: passages, &quot;input_tokens&quot;: reply[&quot;input_tokens&quot;], &quot;output_tokens&quot;: reply[&quot;output_tokens&quot;]}</code></pre>
+<h4>Step 7: grade</h4>
+<p>An unanswerable question is handled correctly only if the chatbot abstains. An answerable one needs two things at once: it must answer, and the passage it <em>cites</em> must contain the gold phrase. Checking the cited passages (not all retrieved ones) is what makes citations meaningful: an answer that cites an unrelated passage is wrong even if the right passage was retrieved.</p>
+<pre><code>def grade(item, result):
+    if not item[&quot;answerable&quot;]:
+        return bool(result[&quot;abstained&quot;])
+    if result[&quot;abstained&quot;]:
+        return False
+    return any(g.lower() in c[&quot;text&quot;].lower() for c in result[&quot;citations&quot;] for g in item[&quot;gold&quot;])</code></pre>
+<h4>Step 8: choosing the gate</h4>
+<p>One reasonable rule: let all but the two weakest answerable questions through. Whatever you choose, never pick a line that blocks many answerable questions before the model sees them.</p>
+<pre><code>_ans_sorted = sorted(s for t, s in best_scores if t[&quot;answerable&quot;])
+MIN_SCORE = round(max(0.0, _ans_sorted[1] - 0.01), 2)</code></pre>
+<h4>Step 10: cost</h4>
+<p>Prices are per million tokens, so divide the token counts by a million before multiplying.</p>
+<pre><code>def cost_estimate(input_tokens, output_tokens, price_in_per_m, price_out_per_m):
+    return input_tokens / 1_000_000 * price_in_per_m + output_tokens / 1_000_000 * price_out_per_m</code></pre>
+<h4>If your accuracy is below 80%</h4>
+<p>Print the <code>FAIL</code> lines and, for each failed question, look at the retrieved passages with <code>retrieve(question)</code>. Then decide which of the four failure points you have:</p>
+<ol>
+<li><strong>Retrieval miss</strong> (the right passage is not among the retrieved ones): raise <code>k</code>, improve your chunking from Module 6, or check that the gold phrase really is in a chunk. No prompt can fix this.</li>
+<li><strong>Ignored evidence</strong> (the right passage is there, but the answer is wrong or from the model's own memory): make the prompt stricter, put the rules in both the system message and at the end of the user message, or use a larger model. Small open models often ignore instructions; the 3-billion-parameter version of the model, or a hosted one, follows them much better.</li>
+<li><strong>Missing or wrong citation</strong> (the answer is right, but no <code>[n]</code>, or the wrong one): add an example of the expected format to the system message, for example "Example: The module sleeps for a time. [2]".</li>
+<li><strong>Answers when it should not</strong> (an unanswerable question gets an answer): raise <code>MIN_SCORE</code>, strengthen the abstain rule, and check that your unanswerable questions really are unanswerable.</li>
+</ol>
+<p>Also check your test set. A gold phrase that is too narrow makes correct answers count as wrong.</p>
+
+<h4>Sample answers to the written questions</h4>
+<ul>
+<li><strong>Answer without retrieval:</strong> the model answers generically, from what it learned in training. It has no way to point to your documents, and it may state something false with confidence. That is exactly what RAG fixes.</li>
+<li><strong>Retrieval or generation?</strong> A good diagnosis looks at the retrieved passages first. If the right passage was there and the answer is still wrong, it is a generation problem. If it was not there, it is a retrieval problem, and the fix is in Module 6's territory, not in the prompt.</li>
+<li><strong>What cuts the cost most?</strong> Because the retrieved passages dominate the input, reducing <code>k</code> or using shorter chunks cuts the most, and a cheaper or smaller model cuts the price per token. The <code>min_score</code> gate saves whole calls for questions the documents cannot answer. Going from <code>k=4</code> to <code>k=2</code> roughly halves the input tokens, at some risk to accuracy: say what <em>you</em> measured.</li>
+</ul>
+
+<h4>Common mistakes and what they look like</h4>
+<ul>
+<li><strong>A prompt that says "use the passages" but not "only":</strong> the model mixes in its own knowledge, so unanswerable questions get confident answers.</li>
+<li><strong>Not telling the model the exact abstain sentence:</strong> it rephrases ("Sorry, I could not find that"), and your code does not recognize the abstention.</li>
+<li><strong>Parsing only <code>[2]</code>:</strong> a citation written as <code>[1, 3]</code> is lost, so a correct answer looks uncited.</li>
+<li><strong>Trusting citation numbers blindly:</strong> models sometimes cite <code>[7]</code> when only 4 passages exist. Ignore numbers out of range.</li>
+<li><strong>Grading with all retrieved passages instead of the cited ones:</strong> the score looks better than the chatbot really is.</li>
+<li><strong>Embedding the question with a different model than the documents:</strong> retrieval looks random. Use the same embedding model as Module 6.</li>
+<li><strong>Putting an API key in the notebook:</strong> anyone who sees your repo can use (and bill) your key. Use the Secrets panel and keep keys out of Git.</li>
+<li><strong>Only testing questions the documents can answer:</strong> the chatbot looks perfect until a real user asks something outside them.</li>
+</ul>
+
+<h4>What to do next</h4>
+<ul>
+<li>Complete the three-line reflection and push your notebook to your portfolio repo (without your documents or your API key if they are private).</li>
+<li>Take the Module 7 quiz in Moodle.</li>
+<li>Module 8 asks a sharper question: when is it worth <em>fine-tuning</em> a model instead of prompting it, and what does each cost? You will compare both on the same task.</li>
+</ul>
+
+</body>
+</html>
