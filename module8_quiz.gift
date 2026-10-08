@@ -1,0 +1,37 @@
+// Module 8 quiz - Deep Learning for AI Startups
+$CATEGORY: $course$/Module 8
+
+::M8 Q1:: What should you try before fine-tuning? {
+~Training from scratch
+=Prompting, possibly with examples#Prompting is the cheapest and fastest thing to try. Fine-tune only if it cannot reach the quality, format, speed or cost you need.
+~Buying more GPUs
+~Deleting the dataset
+}
+
+::M8 Q2:: Fine-tuning is best suited to: {
+~Adding large amounts of frequently changing facts
+~Replacing evaluation
+~Reducing the need for data
+=Consistent format, tone, or a narrow task#Fine-tuning teaches habits and formats. Facts that change belong in retrieval (RAG), not in the weights.
+}
+
+::M8 Q3:: What does LoRA do? {
+~Compresses images
+~Removes the tokenizer
+=Trains small adapter matrices instead of all weights#The original weights stay frozen and only small added matrices are trained, so training is cheap and the saved adapter is tiny.
+~Labels data
+}
+
+::M8 Q4:: Which three axes should you compare when choosing prompting or fine-tuning? {
+=Quality, cost, latency#A good choice balances how good the answers are, what each request costs, and how long users wait.
+~Color, size, shape
+~Epochs, layers, seeds
+~Name, license, date
+}
+
+::M8 Q5:: For a task that needs up-to-date company facts, which is usually better? {
+~Fine-tuning on a snapshot only
+=RAG#Facts change, and retrieval looks them up fresh each time. A fine-tuned model would need retraining whenever the facts change.
+~Training from scratch
+~No retrieval
+}

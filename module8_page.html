@@ -1,0 +1,48 @@
+<h3>Module 8: Fine-tune or prompt?</h3>
+<p><strong>Project:</strong> take one narrow task and solve it three ways: with a small model as it is, with a larger model prompted with examples, and with the small model fine-tuned with LoRA. Compare them on quality, cost and speed, and write a recommendation a founder could act on. <strong>Time:</strong> about 10 hours core, plus about 5 hours for the stretch challenge.</p>
+<p><strong>Done when:</strong> you built a dataset of at least 200 examples for one narrow task; you fine-tuned a small model with LoRA and evaluated all three systems on the same held-out test set; and you have a comparison table (quality, cost, latency) and a written recommendation that uses the numbers.</p>
+<p><a href="https://colab.research.google.com/github/panchadk/AIStartup/blob/main/module8_finetune_vs_prompt.ipynb" target="_blank" rel="noopener"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"></a></p>
+<p><em>Click the button to open the interactive notebook in Google Colab. Choose a GPU runtime, then File, Save a copy in Drive, and work in your own copy.</em></p>
+
+<p><strong>Lecture notes:</strong> <a href="https://panchadk.github.io/AIStartup/module8_notes.html" target="_blank" rel="noopener">read the illustrated notes</a> (about 25 minutes, with diagrams). Read them first, or return to them when you are stuck.</p>
+
+<h4>Before you start: choose a narrow task</h4>
+<p>Fine-tuning pays off on narrow, repeated tasks with a fixed output format: classifying messages, extracting fields into JSON, rewriting text in a house style. You need an <strong>input</strong> and an <strong>output</strong> for every example, and at least <strong>200 examples</strong>. Put them in a file <code>my_task.csv</code> with two columns, <code>input</code> and <code>output</code>, and upload it. No data yet? The notebook includes a demo task (reading customer messages and answering with a JSON record).</p>
+
+<h4>Notes (about 10 minutes)</h4>
+<ul>
+<li>Try <strong>prompting first</strong>, with examples if needed. Fine-tune only when prompting cannot reach the quality, format, speed or cost you need.</li>
+<li>Fine-tuning is best for a <strong>consistent format, tone, or narrow task</strong>. It is a poor way to add facts that change: use RAG for those.</li>
+<li><strong>LoRA</strong> freezes the original weights and trains small adapter matrices, so it fits on one modest GPU and produces a tiny adapter file.</li>
+<li>Train on <strong>answers only</strong>: mark the prompt tokens with the label -100 so that the loss ignores them.</li>
+<li>Data quality matters more than quantity. A few hundred clean examples can be enough for a narrow task.</li>
+<li>Compare options on three axes: <strong>quality, cost per request, and latency</strong>. Include the one-time training cost and work out the break-even point.</li>
+</ul>
+
+<h4>Exercises (all in the notebook)</h4>
+<ol>
+<li><strong>Build the dataset</strong> and split it into train, validation and test.</li>
+<li><strong>Scoring.</strong> Write <code>normalize_output()</code> and <code>is_correct()</code> so harmless differences are not counted as errors.</li>
+<li><strong>Measurement.</strong> Write <code>evaluate_system()</code>, which reports quality, format validity, latency and tokens.</li>
+<li><strong>Baselines.</strong> Evaluate the small model untuned, then write <code>build_fewshot_prompt()</code> and evaluate a larger prompted model.</li>
+<li><strong>Training data.</strong> Write <code>to_chat()</code> and <code>tokenize_example()</code> with the prompt masked out.</li>
+<li><strong>LoRA.</strong> Write <code>make_lora_model()</code>, then fine-tune and evaluate.</li>
+<li><strong>Costs.</strong> Write the API cost, GPU cost and break-even formulas, and build the comparison table.</li>
+<li><strong>Recommend.</strong> Write a recommendation that uses your numbers for quality, cost and latency.</li>
+<li><strong>Stretch:</strong> plot quality against the number of training examples.</li>
+</ol>
+
+<h4>Hint ladder</h4>
+<ol>
+<li>The documentation of the library you use, and a web search.</li>
+<li>The written hints under each step in the notebook.</li>
+<li>If a self-check fails, read its message: each one names the most likely mistake.</li>
+<li>Reference solution: open <a href="https://panchadk.github.io/AIStartup/module8_solution.html" target="_blank" rel="noopener">the solution page</a> only after your own honest attempt.</li>
+</ol>
+
+<h4>Before you submit</h4>
+<ul>
+<li>Every self-check cell passes, and you wrote your notes and recommendation.</li>
+<li>Take the Module 8 quiz (pass mark 4 of 5).</li>
+<li>Push the notebook, <code>comparison_table.csv</code> and a three-line reflection (your task and the three systems, your table and recommendation, what surprised you) to <code>module-08</code> in your portfolio repo. Do not push private data or API keys. Then submit the link in the assignment below.</li>
+</ul>

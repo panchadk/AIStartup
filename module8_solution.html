@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Module 8: Reference solution</title>
+<style>
+  :root { --navy: #1F3864; --ink: #222222; --bg: #FFFFFF; --code-bg: #F3F6FA; --warn-bg: #FFF4E5; --warn-edge: #E08A00; }
+  body { font-family: Arial, Helvetica, sans-serif; max-width: 860px; margin: 0 auto; padding: 24px; line-height: 1.6; color: var(--ink); background: var(--bg); }
+  h3 { color: var(--navy); border-bottom: 3px solid var(--navy); padding-bottom: 6px; }
+  h4 { color: var(--navy); margin-top: 28px; }
+  strong { color: var(--navy); }
+  code { font-family: Consolas, "Courier New", monospace; background: var(--code-bg); padding: 1px 4px; border-radius: 3px; }
+  pre { background: var(--code-bg); border-left: 4px solid var(--navy); padding: 14px; overflow-x: auto; border-radius: 4px; }
+  pre code { background: none; padding: 0; }
+  .banner { background: var(--warn-bg); border-left: 4px solid var(--warn-edge); padding: 12px 16px; border-radius: 4px; margin: 16px 0; }
+  @media (prefers-color-scheme: dark) {
+    :root { --navy: #8FB4F0; --ink: #E6E6E6; --bg: #14181F; --code-bg: #1E2530; --warn-bg: #3A2C12; --warn-edge: #E0A040; }
+  }
+</style>
+</head>
+<body>
+<h3>Module 8: Reference solution</h3>
+<div class="banner"><strong>Try it yourself first.</strong> Open this page only after your own honest attempt. If a self-check is failing, read its message again and compare one function at a time. Matching line for line is not required: if every self-check passes, your solution is correct.</div>
+<h4>Step 2: scoring answers</h4>
+<p>A forgiving score looks for a JSON object inside the answer and re-writes it in a canonical form, so spacing, key order, and chatter or code fences around it do not count as errors. Format strictness is measured separately by <code>format_valid</code>, so you can see a model that is right but messy.</p>
+<pre><code>def normalize_output(text):
+    m = re.search(r&quot;\{.*\}&quot;, text, re.S)
+    if m:
+        try:
+            return json.dumps(json.loads(m.group(0)), sort_keys=True)
+        except Exception:
+            pass
+    return &quot; &quot;.join(text.lower().split())
+
+def is_correct(pred, gold):
+    return normalize_output(pred) == normalize_output(gold)</code></pre>
+<h4>Step 3: evaluate_system</h4>
+<p>Time only the call to the model, collect the token counts it reports, and average everything at the end. Because every system (small, large, fine-tuned) is wrapped as the same kind of predict function, one evaluator measures all of them fairly.</p>
+<pre><code>def evaluate_system(predict_fn, examples):
+    correct = valid = 0
+    lat, n_in, n_out = [], [], []
+    for ex in examples:
+        t0 = time.perf_counter()
+        r = predict_fn(ex[&quot;input&quot;])
+        lat.append(time.perf_counter() - t0)
+        correct += is_correct(r[&quot;text&quot;], ex[&quot;output&quot;])
+        valid += format_valid(r[&quot;text&quot;])
+        n_in.append(r[&quot;input_tokens&quot;]); n_out.append(r[&quot;output_tokens&quot;])
+    n = len(examples)
+    return {&quot;quality&quot;: correct / n, &quot;valid_rate&quot;: valid / n, &quot;latency_s&quot;: sum(lat) / n,
+            &quot;avg_in&quot;: sum(n_in) / n, &quot;avg_out&quot;: sum(n_out) / n, &quot;n&quot;: n}</code></pre>
+<h4>Step 5: the few-shot prompt</h4>
+<p>Worked examples first, then the new message, ending on an open <code>Answer:</code> so that the model continues the pattern. Note the cost: every request carries all the examples again.</p>
+<pre><code>def build_fewshot_prompt(shots, input_text):
+    system = TASK_SYSTEM
+    blocks = [f&quot;Message: {s[&#x27;input&#x27;]}\nAnswer: {s[&#x27;output&#x27;]}&quot; for s in shots]
+    user = &quot;Examples:\n\n&quot; + &quot;\n\n&quot;.join(blocks) + f&quot;\n\nMessage: {input_text}\nAnswer:&quot;
+    return system, user</code></pre>
+<h4>Step 6: training data with the prompt masked</h4>
+<p>The prompt and the answer are tokenized <em>separately</em> and joined, so the boundary between them is exactly the boundary the model will see at run time. The labels are -100 for every prompt position, so the loss (and therefore the learning) comes only from the answer and the end-of-text token. Without the end-of-text token the model would never learn to stop.</p>
+<pre><code>def to_chat(example):
+    return [{&quot;role&quot;: &quot;system&quot;, &quot;content&quot;: TASK_SYSTEM},
+            {&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: example[&quot;input&quot;]},
+            {&quot;role&quot;: &quot;assistant&quot;, &quot;content&quot;: example[&quot;output&quot;]}]
+
+def tokenize_example(example, tokenizer, max_len=256):
+    messages = to_chat(example)
+    prompt_text = tokenizer.apply_chat_template(messages[:-1], tokenize=False, add_generation_prompt=True)
+    prompt_ids = tokenizer(prompt_text, add_special_tokens=False)[&quot;input_ids&quot;]
+    completion_ids = tokenizer(example[&quot;output&quot;] + tokenizer.eos_token, add_special_tokens=False)[&quot;input_ids&quot;]
+    return {&quot;input_ids&quot;: (prompt_ids + completion_ids)[:max_len],
+            &quot;labels&quot;: ([-100] * len(prompt_ids) + completion_ids)[:max_len]}</code></pre>
+<h4>Step 7: LoRA</h4>
+<p>Three numbers describe the adapter: the <strong>rank</strong> <code>r</code> (the width of the small matrices), <code>alpha</code> (a scale for their contribution, often twice the rank), and the list of layers it attaches to. The result is a wrapped model in which only the adapter is trainable.</p>
+<pre><code>def make_lora_model(model, r=16, alpha=32, dropout=0.05):
+    config = LoraConfig(r=r, lora_alpha=alpha, lora_dropout=dropout, target_modules=LORA_TARGETS, task_type=&quot;CAUSAL_LM&quot;)
+    return get_peft_model(model, config)</code></pre>
+<h4>Step 9: costs and break-even</h4>
+<p>An API charges per token, so cost is tokens times price, per million. A model you host costs the GPU time that each request occupies. Break-even asks how many requests it takes for the saving per request to repay a one-time cost.</p>
+<pre><code>def api_cost_per_1k(avg_in, avg_out, price_in_per_m, price_out_per_m):
+    return 1000 * (avg_in / 1_000_000 * price_in_per_m + avg_out / 1_000_000 * price_out_per_m)
+
+def gpu_cost_per_1k(latency_s, gpu_dollars_per_hour):
+    return 1000 * latency_s / 3600 * gpu_dollars_per_hour
+
+def break_even_requests(one_time_cost, cost_per_1k_baseline, cost_per_1k_new):
+    saving_per_request = (cost_per_1k_baseline - cost_per_1k_new) / 1000
+    if saving_per_request &lt;= 0:
+        return float(&quot;inf&quot;)
+    return one_time_cost / saving_per_request</code></pre>
+<h4>A sample recommendation</h4>
+<p>There is no single right answer. A good recommendation names an option, cites numbers for all three axes, and says what would change it. For example:</p>
+<blockquote>I recommend the fine-tuned small model. On the test set it reached 93% quality against 94% for the prompted large model, and it answered in the exact JSON format 100% of the time (the large model added chatter around the JSON in 17% of answers). It answers in 0.3 seconds against 1.2, and it costs $0.03 per 1,000 requests against $0.60, because it needs no examples in the prompt. Training cost about $0.02 once, which pays for itself after about 40 requests. This would change if volume were very low (prompting needs no setup), if the task or labels changed every week (retraining is a chore), or if I needed the large model's stronger judgment on rare hard cases.</blockquote>
+<p>These numbers are an illustration. Your numbers will differ, and your recommendation must follow <em>your</em> table. If your fine-tuned model was worse, say so, and say what it would take (more data, more epochs, a bigger base model) to change the answer.</p>
+
+<h4>If the fine-tuned model is not better</h4>
+<ol>
+<li><strong>Check the labels.</strong> Print one tokenized example and confirm that only the answer positions are not -100.</li>
+<li><strong>Check the loss.</strong> It should fall steadily. If it stays high, raise the learning rate a little or train for more epochs.</li>
+<li><strong>Check the data.</strong> Wrong, inconsistent or duplicated answers teach the model to be inconsistent. Fix the data before the settings.</li>
+<li><strong>Raise the rank</strong> (for example 16 to 32) or adapt more layers, if the task needs more capacity.</li>
+<li><strong>Use a larger base model</strong> if the small one lacks the skill (for example, it cannot read numbers reliably).</li>
+<li><strong>Check the test.</strong> A model that got the content right but the format slightly wrong scores badly. Look at a few wrong answers before changing anything.</li>
+</ol>
+
+<h4>Common mistakes and what they look like</h4>
+<ul>
+<li><strong>Computing the loss on the prompt too:</strong> training is slower and the model learns to echo the prompt. The tokenization self-check shows the masked positions.</li>
+<li><strong>Leaving out the end-of-text token:</strong> the model produces a correct answer and then keeps writing. Quality drops and latency rises.</li>
+<li><strong>Testing on training data:</strong> a perfect score that means nothing. The dataset check requires disjoint train and test sets.</li>
+<li><strong>Comparing systems on different test sets or with different scoring:</strong> the table is meaningless. Wrap every system as a predict function and use one evaluator.</li>
+<li><strong>Counting the cost of the model but not of the examples in the prompt:</strong> the few-shot prompt is sent again with every request, so it often dominates the cost of the large model.</li>
+<li><strong>Ignoring the one-time cost and the upkeep:</strong> fine-tuning must be redone when the task or data changes.</li>
+<li><strong>Using placeholder prices as real ones:</strong> look up the current prices before showing the table to anyone.</li>
+<li><strong>Putting private data or an API key in the repository:</strong> keep both out of Git.</li>
+</ul>
+
+<h4>What to do next</h4>
+<ul>
+<li>Complete the three-line reflection and push your notebook and table to your portfolio repo.</li>
+<li>Take the Module 8 quiz in Moodle.</li>
+<li>Module 9 turns to the data side: how to collect and label a dataset well, and how to build an evaluation script you can trust.</li>
+</ul>
+
+</body>
+</html>
