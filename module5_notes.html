@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Module 5 lecture notes: Vision product prototype</title>
+<style>
+  :root { --navy:#1F3864;--ink:#222222;--bg:#FFFFFF;--code-bg:#F3F6FA;--hl-bg:#FFF4E5;--accent:#D9730D;--muted:#8A94A6; --muted-text:#555555; --good:#2E7D32; }
+  body { font-family: Arial, Helvetica, sans-serif; max-width: 860px; margin: 0 auto; padding: 24px; line-height: 1.65; color: var(--ink); background: var(--bg); }
+  h1 { color: var(--navy); margin-bottom: 4px; }
+  h2 { color: var(--navy); border-bottom: 3px solid var(--navy); padding-bottom: 6px; margin-top: 40px; }
+  h3 { color: var(--navy); margin-top: 26px; }
+  strong { color: var(--navy); }
+  a { color: var(--navy); }
+  .meta { color: var(--muted-text); margin-top: 0; }
+  code { font-family: Consolas, "Courier New", monospace; background: var(--code-bg); padding: 1px 4px; border-radius: 3px; }
+  pre { background: var(--code-bg); border-left: 4px solid var(--navy); padding: 14px; overflow-x: auto; border-radius: 4px; }
+  pre code { background: none; padding: 0; }
+  .toc { background: var(--code-bg); border-radius: 6px; padding: 12px 20px; }
+  .toc ol { margin: 6px 0; }
+  .note { background: var(--hl-bg); border-left: 4px solid var(--accent); padding: 12px 16px; border-radius: 4px; margin: 18px 0; }
+  .key { background: var(--code-bg); border-left: 4px solid var(--navy); padding: 12px 16px; border-radius: 4px; margin: 18px 0; }
+  figure { margin: 26px 0; }
+  figcaption { font-size: .9em; color: var(--muted-text); text-align: center; margin-top: 6px; }
+  svg.fig { width: 100%; height: auto; max-width: 760px; display: block; margin: 0 auto; }
+  table { border-collapse: collapse; width: 100%; margin: 14px 0; }
+  th, td { border: 1px solid var(--muted); padding: 7px 10px; text-align: left; vertical-align: top; }
+  th { background: var(--code-bg); color: var(--navy); }
+  details { background: var(--code-bg); border-radius: 6px; padding: 8px 14px; margin: 10px 0; }
+  summary { cursor: pointer; font-weight: bold; color: var(--navy); }
+  .nav { display: flex; justify-content: space-between; gap: 12px; margin-top: 40px; padding-top: 14px; border-top: 1px solid var(--muted); flex-wrap: wrap; }
+
+svg .box{fill:var(--code-bg);stroke:var(--navy);stroke-width:2}
+svg .box2{fill:var(--bg);stroke:var(--navy);stroke-width:2}
+svg .hl{fill:var(--hl-bg);stroke:var(--accent);stroke-width:2}
+svg .t{fill:var(--ink);font-family:Arial,Helvetica,sans-serif;font-size:14px}
+svg .tb{font-weight:bold}
+svg .ts{font-size:12px}
+svg .tl{font-size:16px}
+svg .tn{fill:var(--navy)}
+svg .ta{fill:var(--accent)}
+svg .tm{fill:var(--muted)}
+svg .ln{stroke:var(--navy);stroke-width:2.5;fill:none}
+svg .la{stroke:var(--accent);stroke-width:2.5;fill:none}
+svg .lg{stroke:var(--muted);stroke-width:1;fill:none;opacity:.55}
+svg .ax{stroke:var(--ink);stroke-width:1.5;fill:none}
+svg .fw{stroke:var(--navy);stroke-width:2.5;fill:none}
+svg .bw{stroke:var(--accent);stroke-width:2.5;fill:none}
+svg .dash{stroke-dasharray:6 4}
+svg .mN{fill:var(--navy)}
+svg .mA{fill:var(--accent)}
+svg .dotN{fill:var(--navy)}
+svg .dotA{fill:var(--accent)}
+svg .sqN{fill:var(--navy)}
+svg .sqA{fill:var(--accent)}
+svg .sqM{fill:var(--muted)}
+svg .tbg{fill:var(--bg);font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:bold}
+svg .node{fill:var(--bg);stroke:var(--navy);stroke-width:2}
+
+  @media (prefers-color-scheme: dark) {
+    :root { --navy:#8FB4F0;--ink:#E6E6E6;--bg:#14181F;--code-bg:#1E2530;--hl-bg:#3A2C12;--accent:#F0A040;--muted:#6B778C; --muted-text:#B5BCC8; --good:#66BB6A; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Module 5: Vision product prototype</h1>
+<p class="meta">Lecture notes with diagrams. Reading time: about 20 minutes. Read once, then collect your photos and start the notebook. Come back here when a self-check fails.</p>
+
+<div class="toc"><strong>In these notes</strong>
+<ol>
+<li><a href="#big">The big picture</a></li>
+<li><a href="#cnn">How a network sees an image</a></li>
+<li><a href="#transfer">Transfer learning</a></li>
+<li><a href="#freeze">Freezing and fine-tuning</a></li>
+<li><a href="#data">Your data is the product</a></li>
+<li><a href="#eval">Evaluating a vision model</a></li>
+<li><a href="#curve">How much data do you need?</a></li>
+<li><a href="#terms">Key terms</a>, <a href="#pitfalls">pitfalls</a>, and <a href="#check">check yourself</a></li>
+</ol></div>
+
+<h2 id="big">1. The big picture</h2>
+<p>Almost every vision product, from a plant-disease checker to a quality-control camera, follows the same recipe today: start from a <strong>pretrained model</strong>, replace its last layer, and adapt it with your own photos. Nobody trains a vision model from nothing unless they have millions of images.</p>
+<p>That shifts where the real work is. The model is a commodity that you download for free. <strong>Your photos, your labels, and your honest evaluation are the product.</strong> This module is about doing those well.</p>
+
+<h2 id="cnn">2. How a network sees an image</h2>
+<p>A <strong>convolutional neural network</strong> (CNN) slides small filters across the image. Each filter detects a simple pattern wherever it appears. Stacking many layers of filters builds up understanding:</p>
+<figure>
+<svg class="fig" viewBox="0 0 760 285" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A convolutional network builds up from edges to textures to parts to classes"><defs><marker id="aN51" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA51" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><rect x="10" y="60" width="126" height="70" rx="8" class="box"/><text x="73.0" y="91.0" class="t tb" text-anchor="middle" >Pixels</text><text x="73.0" y="109.0" class="t ts" text-anchor="middle" >the photo</text><rect x="160" y="60" width="126" height="70" rx="8" class="box"/><text x="223.0" y="91.0" class="t tb" text-anchor="middle" >Early layers</text><text x="223.0" y="109.0" class="t ts" text-anchor="middle" >edges, colours</text><rect x="310" y="60" width="126" height="70" rx="8" class="box"/><text x="373.0" y="91.0" class="t tb" text-anchor="middle" >Middle layers</text><text x="373.0" y="109.0" class="t ts" text-anchor="middle" >textures, corners</text><rect x="460" y="60" width="126" height="70" rx="8" class="box"/><text x="523.0" y="91.0" class="t tb" text-anchor="middle" >Late layers</text><text x="523.0" y="109.0" class="t ts" text-anchor="middle" >parts: wheel, ear, leaf</text><rect x="610" y="60" width="126" height="70" rx="8" class="hl"/><text x="673.0" y="91.0" class="t tb" text-anchor="middle" >Head</text><text x="673.0" y="109.0" class="t ts" text-anchor="middle" >your classes</text><line x1="136" y1="95" x2="158" y2="95" class="fw" marker-end="url(#aN51)"/><line x1="286" y1="95" x2="308" y2="95" class="fw" marker-end="url(#aN51)"/><line x1="436" y1="95" x2="458" y2="95" class="fw" marker-end="url(#aN51)"/><line x1="586" y1="95" x2="608" y2="95" class="fw" marker-end="url(#aN51)"/><rect x="55" y="12" width="50" height="38" rx="3" class="box2"/><polygon points="62,44 80,22 98,44" class="dotN"/><circle cx="93" cy="26" r="5" class="dotA"/><line x1="200" y1="44" x2="216" y2="20" class="ln"/><line x1="214" y1="44" x2="230" y2="20" class="ln"/><line x1="228" y1="44" x2="244" y2="20" class="ln"/><rect x="350" y="16" width="9" height="9" class="sqM"/><rect x="350" y="28" width="9" height="9" class="sqN"/><rect x="350" y="40" width="9" height="9" class="sqM"/><rect x="362" y="16" width="9" height="9" class="sqN"/><rect x="362" y="28" width="9" height="9" class="sqM"/><rect x="362" y="40" width="9" height="9" class="sqN"/><rect x="374" y="16" width="9" height="9" class="sqM"/><rect x="374" y="28" width="9" height="9" class="sqN"/><rect x="374" y="40" width="9" height="9" class="sqM"/><circle cx="530" cy="32" r="12" class="node"/><circle cx="530" cy="32" r="5" class="dotA"/><text x="673" y="36" class="t ts tb" text-anchor="middle" >cat  dog  bird</text><line x1="10" y1="165" x2="750" y2="165" class="lg" style="opacity:1"/><text x="235" y="192" class="t ts tn" text-anchor="middle" >GENERIC: the same for almost any photo</text><text x="235" y="210" class="t ts tm" text-anchor="middle" >reusable across projects</text><text x="560" y="192" class="t ts ta" text-anchor="middle" >SPECIFIC: tied to the original task</text><text x="560" y="210" class="t ts tm" text-anchor="middle" >this is the part you replace</text><line x1="20" y1="245" x2="740" y2="245" class="fw" marker-end="url(#aN51)"/><text x="380" y="268" class="t ts" text-anchor="middle" >more abstract as you go deeper</text></svg>
+<figcaption>Early layers find edges and colours, later layers find parts. The early layers are generic; only the last part is specific to the original task.</figcaption>
+</figure>
+<ul>
+<li><strong>Early layers</strong> detect edges and colour blobs. Every photo contains them, so these are useful for any project.</li>
+<li><strong>Middle layers</strong> combine edges into textures and corners.</li>
+<li><strong>Late layers</strong> detect parts such as wheels, ears or leaves.</li>
+<li>The <strong>head</strong> (the final layer) turns those features into scores for your classes.</li>
+</ul>
+<p>This is why a model trained on pictures of cars and dogs can help you spot plant diseases: the early and middle layers are already good at seeing.</p>
+
+<h2 id="transfer">3. Transfer learning</h2>
+<p>A model such as ResNet-18 has been trained on <strong>ImageNet</strong>, 1.2 million photos in 1,000 classes. Everything it learned is stored in its weights. In <strong>transfer learning</strong> you keep those weights (the <strong>backbone</strong>) and replace only the final layer (the <strong>head</strong>) with a new one for your classes.</p>
+<figure>
+<svg class="fig" viewBox="0 0 760 275" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Scratch training versus transfer learning with a pretrained backbone and a new head"><defs><marker id="aN52" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA52" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><text x="190" y="22" class="t tb tn" text-anchor="middle" >Training from scratch</text><text x="570" y="22" class="t tb tn" text-anchor="middle" >Transfer learning</text><rect x="20" y="45" width="330" height="70" rx="8" class="box2"/><text x="185.0" y="76.0" class="t tb" text-anchor="middle" >Random weights</text><text x="185.0" y="94.0" class="t ts" text-anchor="middle" >must learn edges, textures and parts from your photos</text><rect x="20" y="135" width="330" height="50" rx="8" class="box2"/><text x="185.0" y="165.0" class="t tb" text-anchor="middle" >Your 150 photos</text><text x="190" y="215" class="t ts ta" text-anchor="middle" >needs thousands of images per class</text><line x1="380" y1="40" x2="380" y2="270" class="lg" style="opacity:1"/><rect x="400" y="45" width="210" height="70" rx="8" class="box"/><text x="505.0" y="76.0" class="t tb" text-anchor="middle" >Pretrained backbone</text><text x="505.0" y="94.0" class="t ts" text-anchor="middle" >ImageNet: 1.2M photos</text><rect x="640" y="45" width="110" height="70" rx="8" class="hl"/><text x="695.0" y="76.0" class="t tb" text-anchor="middle" >New head</text><text x="695.0" y="94.0" class="t ts" text-anchor="middle" >your classes</text><line x1="610" y1="80" x2="638" y2="80" class="fw" marker-end="url(#aN52)"/><text x="505" y="134" class="t ts tn" text-anchor="middle" >KEEP (generic knowledge)</text><text x="695" y="134" class="t ts ta" text-anchor="middle" >REPLACE</text><rect x="400" y="150" width="350" height="40" rx="8" class="box2"/><text x="575.0" y="175.0" class="t tb" text-anchor="middle" >Your 150 photos</text><text x="575" y="215" class="t ts tn" text-anchor="middle" >works with 50 or fewer images per class</text><text x="380" y="255" class="t tb" text-anchor="middle" >ResNet-18 has 11.2 million weights. A new head for 3 classes adds only 1,539.</text></svg>
+<figcaption>Training from scratch must discover everything from your few photos. Transfer learning only has to learn the new head.</figcaption>
+</figure>
+<p>Look at the sizes. ResNet-18 has about <strong>11.2 million</strong> weights. For a 3-class problem the new head has <strong>512 x 3 + 3 = 1,539</strong> weights. Learning 1,539 numbers from 150 photos is realistic. Learning 11 million is not, and that is why the scratch baseline in the notebook struggles.</p>
+<div class="key"><strong>The recipe in code:</strong> load the pretrained model, replace <code>model.fc</code> with <code>nn.Linear(512, number_of_classes)</code>. That is all the "new head" is.</div>
+
+<h2 id="freeze">4. Freezing and fine-tuning</h2>
+<p>You choose how much of the backbone is allowed to change. A parameter that is <strong>frozen</strong> keeps its pretrained value (<code>requires_grad = False</code>).</p>
+<figure>
+<svg class="fig" viewBox="0 0 760 318" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three strategies: train the head only, fine-tune the last block, or fine-tune everything"><defs><marker id="aN53" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA53" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><text x="380" y="20" class="t tb tn" text-anchor="middle" >Which layers learn?  (orange = trainable, grey = frozen)</text><text x="10" y="62" class="t tb" text-anchor="start" >Feature extraction</text><text x="10" y="80" class="t ts tm" text-anchor="start" >head only, lr 0.001</text><rect x="250" y="40" width="84" height="46" rx="6" class="sqM"/><text x="292" y="68" class="tbg" text-anchor="middle" >block 1</text><rect x="342" y="40" width="84" height="46" rx="6" class="sqM"/><text x="384" y="68" class="tbg" text-anchor="middle" >block 2</text><rect x="434" y="40" width="84" height="46" rx="6" class="sqM"/><text x="476" y="68" class="tbg" text-anchor="middle" >block 3</text><rect x="526" y="40" width="84" height="46" rx="6" class="sqM"/><text x="568" y="68" class="tbg" text-anchor="middle" >block 4</text><rect x="618" y="40" width="84" height="46" rx="6" class="sqA"/><text x="660" y="68" class="tbg" text-anchor="middle" >head</text><text x="706" y="106" class="t ts" text-anchor="end" >very little data</text><text x="10" y="144" class="t tb" text-anchor="start" >Partial fine-tune</text><text x="10" y="162" class="t ts tm" text-anchor="start" >last block + head, lr 0.0003</text><rect x="250" y="122" width="84" height="46" rx="6" class="sqM"/><text x="292" y="150" class="tbg" text-anchor="middle" >block 1</text><rect x="342" y="122" width="84" height="46" rx="6" class="sqM"/><text x="384" y="150" class="tbg" text-anchor="middle" >block 2</text><rect x="434" y="122" width="84" height="46" rx="6" class="sqM"/><text x="476" y="150" class="tbg" text-anchor="middle" >block 3</text><rect x="526" y="122" width="84" height="46" rx="6" class="sqA"/><text x="568" y="150" class="tbg" text-anchor="middle" >block 4</text><rect x="618" y="122" width="84" height="46" rx="6" class="sqA"/><text x="660" y="150" class="tbg" text-anchor="middle" >head</text><text x="706" y="188" class="t ts" text-anchor="end" >a bit more data</text><text x="10" y="226" class="t tb" text-anchor="start" >Full fine-tune</text><text x="10" y="244" class="t ts tm" text-anchor="start" >everything, lr 0.0001</text><rect x="250" y="204" width="84" height="46" rx="6" class="sqA"/><text x="292" y="232" class="tbg" text-anchor="middle" >block 1</text><rect x="342" y="204" width="84" height="46" rx="6" class="sqA"/><text x="384" y="232" class="tbg" text-anchor="middle" >block 2</text><rect x="434" y="204" width="84" height="46" rx="6" class="sqA"/><text x="476" y="232" class="tbg" text-anchor="middle" >block 3</text><rect x="526" y="204" width="84" height="46" rx="6" class="sqA"/><text x="568" y="232" class="tbg" text-anchor="middle" >block 4</text><rect x="618" y="204" width="84" height="46" rx="6" class="sqA"/><text x="660" y="232" class="tbg" text-anchor="middle" >head</text><text x="706" y="270" class="t ts" text-anchor="end" >more data, or after phase 1</text><text x="380" y="300" class="t tb" text-anchor="middle" >Common recipe: start with row 1, then move to row 3 with a much lower learning rate.</text></svg>
+<figcaption>The less data you have, the more you freeze. A common recipe is to start with the head only, then unfreeze everything with a smaller learning rate.</figcaption>
+</figure>
+<ol>
+<li><strong>Feature extraction:</strong> freeze the whole backbone and train only the head. Fast, safe, and hard to overfit. Use a normal learning rate such as 0.001.</li>
+<li><strong>Fine-tuning:</strong> unfreeze the backbone and keep training, with a <strong>much lower learning rate</strong> such as 0.0001. Big steps would overwrite the useful pretrained features. Small steps gently adapt them to your photos.</li>
+</ol>
+<div class="note"><strong>Two details that cause bugs:</strong> (1) Freeze first, then add the new head, because a layer created after freezing is trainable by default. (2) After unfreezing, create a <em>new optimizer</em>, because the old one only knows the head's parameters.</div>
+
+<h2 id="data">5. Your data is the product</h2>
+<h3>Collecting photos</h3>
+<ul>
+<li><strong>At least 50 images per class</strong>, more if you can. Aim for the real conditions your product will meet.</li>
+<li><strong>Vary everything that should not matter:</strong> background, lighting, angle, distance, camera. If every photo of class A is on a white table, the model may learn the table instead of the object. This is called a <strong>shortcut</strong>.</li>
+<li><strong>Clean labels.</strong> A wrong label teaches the model wrong things and makes your test score unreliable.</li>
+<li><strong>No duplicates.</strong> Copies and near-copies spread across the train and test sets give inflated scores, as you saw in Module 4.</li>
+</ul>
+<h3>Splitting</h3>
+<p>Use a <strong>stratified</strong> split: divide each class separately into train, validation and test. With small data, a plain random split can leave a class almost out of the test set by bad luck.</p>
+<h3>Preprocessing and augmentation</h3>
+<p>Pretrained models expect a certain input: a fixed image size (224 pixels for most) and pixel values <strong>normalized</strong> with the ImageNet mean and standard deviation. Skipping this is a common cause of poor results.</p>
+<figure>
+<svg class="fig" viewBox="0 0 760 285" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Augmentation examples: flip, zoomed crop, colour change, applied to training images only"><defs><marker id="aN54" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA54" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><text x="380" y="20" class="t tb tn" text-anchor="middle" >Augmentation: new training examples from the ones you have</text><clipPath id="clp1074"><rect x="35" y="55" width="110" height="80"/></clipPath><g clip-path="url(#clp1074)"><rect x="35" y="55" width="110" height="80" class="box2"/><g><polygon points="43,129 80,77 117,129" class="dotN"/><circle cx="117" cy="75" r="10" class="dotA"/></g></g><rect x="35" y="55" width="110" height="80" rx="3" fill="none" class="ln" style="stroke-width:1.5"/><text x="90" y="155" class="t ts" text-anchor="middle" >original</text><clipPath id="clp7201"><rect x="205" y="55" width="110" height="80"/></clipPath><g clip-path="url(#clp7201)"><rect x="205" y="55" width="110" height="80" class="box2"/><g transform="translate(520 0) scale(-1 1)"><polygon points="213,129 250,77 287,129" class="dotN"/><circle cx="287" cy="75" r="10" class="dotA"/></g></g><rect x="205" y="55" width="110" height="80" rx="3" fill="none" class="ln" style="stroke-width:1.5"/><text x="260" y="155" class="t ts" text-anchor="middle" >flipped</text><clipPath id="clp1278"><rect x="375" y="55" width="110" height="80"/></clipPath><g clip-path="url(#clp1278)"><rect x="375" y="55" width="110" height="80" class="box2"/><g transform="translate(430 95) scale(1.7) translate(-440 -91)"><polygon points="383,129 420,77 457,129" class="dotN"/><circle cx="457" cy="75" r="10" class="dotA"/></g></g><rect x="375" y="55" width="110" height="80" rx="3" fill="none" class="ln" style="stroke-width:1.5"/><text x="430" y="155" class="t ts" text-anchor="middle" >zoomed crop</text><clipPath id="clp6607"><rect x="545" y="55" width="110" height="80"/></clipPath><g clip-path="url(#clp6607)"><rect x="545" y="55" width="110" height="80" class="box2" style="opacity:.55"/><g><polygon points="553,129 590,77 627,129" class="dotN" style="opacity:.55"/><circle cx="627" cy="75" r="10" class="dotA" style="opacity:.55"/></g></g><rect x="545" y="55" width="110" height="80" rx="3" fill="none" class="ln" style="stroke-width:1.5"/><text x="600" y="155" class="t ts" text-anchor="middle" >colour change</text><rect x="40" y="175" width="330" height="60" rx="8" class="hl"/><text x="205.0" y="201.0" class="t tb" text-anchor="middle" >Training images</text><text x="205.0" y="219.0" class="t ts" text-anchor="middle" >augmented differently every epoch</text><rect x="390" y="175" width="330" height="60" rx="8" class="box2"/><text x="555.0" y="201.0" class="t tb" text-anchor="middle" >Validation and test images</text><text x="555.0" y="219.0" class="t ts" text-anchor="middle" >left exactly as they are</text><text x="380" y="268" class="t ts" text-anchor="middle" >Scores must be repeatable and measured on real, unmodified photos.</text></svg>
+<figcaption>Augmentation creates variety from the photos you have. Apply it only to training images.</figcaption>
+</figure>
+<p><strong>Augmentation</strong> randomly changes training photos a little each epoch: flipping, cropping and zooming, small colour changes. The model sees a slightly different version each time, so it cannot memorize exact pixels. Never augment validation or test images, because you want repeatable scores on real photos. Only use changes that keep the label true: flipping a photo of a cat is fine, flipping the digit 6 is not.</p>
+
+<h2 id="eval">6. Evaluating a vision model</h2>
+<p><strong>Accuracy</strong> is one number. A <strong>confusion matrix</strong> shows where the mistakes are: rows are the true classes, columns are the predicted classes, and the diagonal is correct.</p>
+<figure>
+<svg class="fig" viewBox="0 0 760 355" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="An example confusion matrix with the dog class often mistaken for cat"><defs><marker id="aN55" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA55" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><text x="370.0" y="24" class="t tb tn" text-anchor="middle" >predicted class</text><text x="150" y="190.0" class="t tb tn" text-anchor="middle" transform="rotate(-90 150 190.0)">true class</text><text x="290.0" y="62" class="t ts" text-anchor="middle" >cat</text><text x="370.0" y="62" class="t ts" text-anchor="middle" >dog</text><text x="450.0" y="62" class="t ts" text-anchor="middle" >bird</text><text x="242" y="114.0" class="t ts" text-anchor="end" >cat</text><text x="242" y="194.0" class="t ts" text-anchor="end" >dog</text><text x="242" y="274.0" class="t ts" text-anchor="end" >bird</text><rect x="250" y="70" width="77" height="77" rx="4" class="sqN" style="opacity:1.0"/><text x="289.0" y="116.0" class="tbg" text-anchor="middle" >18</text><rect x="330" y="70" width="77" height="77" rx="4" class="sqM" style="opacity:0.45"/><text x="369.0" y="116.0" class="t tb" text-anchor="middle" >2</text><rect x="410" y="70" width="77" height="77" rx="4" class="sqM" style="opacity:0.45"/><text x="449.0" y="116.0" class="t tb" text-anchor="middle" >0</text><rect x="250" y="150" width="77" height="77" rx="4" class="sqA" style="opacity:1.0"/><text x="289.0" y="196.0" class="tbg" text-anchor="middle" >9</text><rect x="330" y="150" width="77" height="77" rx="4" class="sqN" style="opacity:1.0"/><text x="369.0" y="196.0" class="tbg" text-anchor="middle" >11</text><rect x="410" y="150" width="77" height="77" rx="4" class="sqM" style="opacity:0.45"/><text x="449.0" y="196.0" class="t tb" text-anchor="middle" >0</text><rect x="250" y="230" width="77" height="77" rx="4" class="sqM" style="opacity:0.45"/><text x="289.0" y="276.0" class="t tb" text-anchor="middle" >1</text><rect x="330" y="230" width="77" height="77" rx="4" class="sqM" style="opacity:0.45"/><text x="369.0" y="276.0" class="t tb" text-anchor="middle" >0</text><rect x="410" y="230" width="77" height="77" rx="4" class="sqN" style="opacity:1.0"/><text x="449.0" y="276.0" class="tbg" text-anchor="middle" >19</text><text x="620" y="110" class="t ts tn" text-anchor="start" >diagonal = correct</text><text x="620" y="132" class="t ts tm" text-anchor="start" >(the sum of the diagonal</text><text x="620" y="148" class="t ts tm" text-anchor="start" >divided by the total</text><text x="620" y="164" class="t ts tm" text-anchor="start" >is the accuracy)</text><text x="620" y="220" class="t ts ta" text-anchor="start" >9 dogs were called cats:</text><text x="620" y="238" class="t ts ta" text-anchor="start" >a clear problem to fix</text><text x="380" y="335" class="t tb" text-anchor="middle" >Recall for dog = 11 / 20 = 0.55, while cat is 0.90 and bird is 0.95.</text></svg>
+<figcaption>In this example, dogs are often called cats. The overall accuracy hides this, but the matrix shows it at a glance.</figcaption>
+</figure>
+<ul>
+<li><strong>Per-class recall</strong> is the diagonal cell divided by the row total: of all true dogs, how many were found?</li>
+<li><strong>Look at the worst mistakes:</strong> the wrong predictions the model was <em>most confident</em> about. They often reveal bad labels, misleading backgrounds, or genuinely ambiguous classes. Fixing the data usually beats tuning the model.</li>
+</ul>
+<div class="note"><strong>Small test sets are noisy.</strong> If 22 of 24 test images are correct (91.7%), the standard error is about sqrt(0.917 x 0.083 / 24) = 5.6 points. So the true accuracy could easily be anywhere from about 86% to 97%. With only 24 images you cannot tell a 91% model from an 88% model. Collect more test photos before drawing strong conclusions.</div>
+
+<h2 id="curve">7. How much data do you need?</h2>
+<figure>
+<svg class="fig" viewBox="0 0 760 335" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Illustrative learning curves: pretrained models need far fewer images than models trained from scratch"><defs><marker id="aN56" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA56" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><line x1="70" y1="270" x2="710" y2="270" class="ax"/><line x1="70" y1="270" x2="70" y2="40" class="ax"/><line x1="70" y1="238.57142857142856" x2="710" y2="238.57142857142856" class="lg"/><text x="60" y="242.57142857142856" class="t ts tm" text-anchor="end" >0.4</text><line x1="70" y1="175.71428571428572" x2="710" y2="175.71428571428572" class="lg"/><text x="60" y="179.71428571428572" class="t ts tm" text-anchor="end" >0.6</text><line x1="70" y1="112.85714285714286" x2="710" y2="112.85714285714286" class="lg"/><text x="60" y="116.85714285714286" class="t ts tm" text-anchor="end" >0.8</text><line x1="70" y1="50.0" x2="710" y2="50.0" class="lg"/><text x="60" y="54.0" class="t ts tm" text-anchor="end" >1.0</text><text x="100" y="292" class="t ts" text-anchor="middle" >5</text><text x="210" y="292" class="t ts" text-anchor="middle" >10</text><text x="320" y="292" class="t ts" text-anchor="middle" >20</text><text x="430" y="292" class="t ts" text-anchor="middle" >50</text><text x="540" y="292" class="t ts" text-anchor="middle" >100</text><text x="650" y="292" class="t ts" text-anchor="middle" >200</text><text x="390" y="318" class="t ts tm" text-anchor="middle" >training images per class (log scale)</text><text x="20" y="155" class="t ts tm" text-anchor="middle" transform="rotate(-90 20 155)">test accuracy</text><path d="M100,144.3 L210,106.6 L320,81.4 L430,68.9 L540,65.7 L650,62.6" class="ln"/><circle cx="100" cy="144.3" r="5" class="dotN"/><circle cx="210" cy="106.6" r="5" class="dotN"/><circle cx="320" cy="81.4" r="5" class="dotN"/><circle cx="430" cy="68.9" r="5" class="dotN"/><circle cx="540" cy="65.7" r="5" class="dotN"/><circle cx="650" cy="62.6" r="5" class="dotN"/><path d="M100,238.6 L210,219.7 L320,191.4 L430,150.6 L540,116.0 L650,87.7" class="la"/><circle cx="100" cy="238.6" r="5" class="dotA"/><circle cx="210" cy="219.7" r="5" class="dotA"/><circle cx="320" cy="191.4" r="5" class="dotA"/><circle cx="430" cy="150.6" r="5" class="dotA"/><circle cx="540" cy="116.0" r="5" class="dotA"/><circle cx="650" cy="87.7" r="5" class="dotA"/><line x1="480" y1="222" x2="508" y2="222" class="ln"/><text x="516" y="226" class="t ts" text-anchor="start" >pretrained, fine-tuned</text><line x1="480" y1="244" x2="508" y2="244" class="la"/><text x="516" y="248" class="t ts" text-anchor="start" >from scratch</text><text x="190" y="180" class="t ts tm" text-anchor="middle" >the gap is biggest</text><text x="190" y="196" class="t ts tm" text-anchor="middle" >when data is scarce</text></svg>
+<figcaption>Illustrative: a pretrained model is already strong with very few photos, while a model trained from scratch needs many times more.</figcaption>
+</figure>
+<p>The gap between pretrained and scratch is largest when data is scarce, which is exactly the situation of most startups. As you collect more data the gap narrows, but pretrained models usually stay ahead. The practical advice: start with a pretrained model, collect 50 images per class, look at the mistakes, and let them tell you which photos to collect next.</p>
+
+<h2 id="terms">8. Key terms</h2>
+<table>
+<tr><th>Term</th><th>Plain meaning</th></tr>
+<tr><td>CNN</td><td>A network that detects patterns with small sliding filters</td></tr>
+<tr><td>Pretrained model</td><td>A model already trained on a big dataset such as ImageNet</td></tr>
+<tr><td>Backbone</td><td>The body of the network that turns an image into features</td></tr>
+<tr><td>Head</td><td>The final layer that turns features into class scores</td></tr>
+<tr><td>Freezing</td><td>Not updating some weights during training</td></tr>
+<tr><td>Fine-tuning</td><td>Continuing to train a pretrained model on your data, gently</td></tr>
+<tr><td>Augmentation</td><td>Random small changes to training images to add variety</td></tr>
+<tr><td>Stratified split</td><td>Dividing each class separately so proportions stay equal</td></tr>
+<tr><td>Confusion matrix</td><td>A table of true classes against predicted classes</td></tr>
+<tr><td>Shortcut</td><td>An accidental pattern the model uses instead of the real signal</td></tr>
+</table>
+
+<h2 id="pitfalls">9. Common pitfalls</h2>
+<ul>
+<li>Skipping <code>Normalize</code>, or using the wrong statistics, so a pretrained model sees unfamiliar inputs.</li>
+<li>Augmenting the validation or test images.</li>
+<li>Freezing after replacing the head, so nothing trains.</li>
+<li>Forgetting to build a new optimizer after unfreezing.</li>
+<li>Using a high learning rate when fine-tuning, which destroys the pretrained features.</li>
+<li>Collecting photos with a hidden shortcut, such as one class always on the same background.</li>
+<li>Trusting a small test set too much, or tuning on it.</li>
+</ul>
+
+<h2 id="check">10. Check yourself</h2>
+<p>Try each question first, then open the answer.</p>
+<details><summary>Question 1: ResNet-18 has about 11.2 million parameters. You freeze the backbone and add a new head for 4 classes. How many parameters train?</summary><p>The head is one Linear layer from 512 features to 4 classes: 512 x 4 + 4 = <strong>2,052</strong> parameters. That is under 0.02% of the model.</p></details>
+<details><summary>Question 2: Why are the validation and test images not augmented?</summary><p>Because you want repeatable scores that measure how the model does on real, unmodified photos. Random changes at evaluation time would make the numbers jump around and would not reflect what your product will see.</p></details>
+<details><summary>Question 3: Your test set has 24 images and the model gets 22 right. Can you be sure the true accuracy is above 85%?</summary><p>No. The accuracy is 91.7%, but the standard error is about 5.6 points, so the true accuracy could plausibly be around 86% to 97%, and 85% is not safely excluded. Collect more test photos for a firmer answer.</p></details>
+
+<h2>Next steps</h2>
+<ul>
+<li>Open the <a href="https://colab.research.google.com/github/panchadk/AIStartup/blob/main/module5_vision_prototype.ipynb" target="_blank" rel="noopener">Module 5 notebook in Colab</a> and start building.</li>
+<li>Back to the <a href="https://panchadk.github.io/AIStartup/module5_page.html">Module 5 page</a>.</li>
+</ul>
+<div class="nav"><a href="https://panchadk.github.io/AIStartup/module4_notes.html">&larr; Previous: Module 4 notes</a><span></span></div>
+
+</body>
+</html>

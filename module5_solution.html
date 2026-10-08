@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Module 5: Reference solution</title>
+<style>
+  :root { --navy: #1F3864; --ink: #222222; --bg: #FFFFFF; --code-bg: #F3F6FA; --warn-bg: #FFF4E5; --warn-edge: #E08A00; }
+  body { font-family: Arial, Helvetica, sans-serif; max-width: 860px; margin: 0 auto; padding: 24px; line-height: 1.6; color: var(--ink); background: var(--bg); }
+  h3 { color: var(--navy); border-bottom: 3px solid var(--navy); padding-bottom: 6px; }
+  h4 { color: var(--navy); margin-top: 28px; }
+  strong { color: var(--navy); }
+  code { font-family: Consolas, "Courier New", monospace; background: var(--code-bg); padding: 1px 4px; border-radius: 3px; }
+  pre { background: var(--code-bg); border-left: 4px solid var(--navy); padding: 14px; overflow-x: auto; border-radius: 4px; }
+  pre code { background: none; padding: 0; }
+  .banner { background: var(--warn-bg); border-left: 4px solid var(--warn-edge); padding: 12px 16px; border-radius: 4px; margin: 16px 0; }
+  @media (prefers-color-scheme: dark) {
+    :root { --navy: #8FB4F0; --ink: #E6E6E6; --bg: #14181F; --code-bg: #1E2530; --warn-bg: #3A2C12; --warn-edge: #E0A040; }
+  }
+</style>
+</head>
+<body>
+<h3>Module 5: Reference solution</h3>
+<div class="banner"><strong>Try it yourself first.</strong> Open this page only after your own honest attempt. If a self-check is failing, read its message again and compare one function at a time. Matching line for line is not required: if every self-check passes, your solution is correct.</div>
+<h4>Step 2: stratified split</h4>
+<p>Split each class separately, so every class appears in the same proportions in all three splits. With 150 images, a plain random split could by bad luck leave a class almost missing from the test set.</p>
+<pre><code>def stratified_split(labels, val_frac=0.15, test_frac=0.15, seed=0):
+    rng = np.random.default_rng(seed)
+    labels = np.asarray(labels)
+    train_idx, val_idx, test_idx = [], [], []
+    for c in np.unique(labels):
+        idx = np.where(labels == c)[0]
+        rng.shuffle(idx)
+        n_test = int(round(len(idx) * test_frac))
+        n_val = int(round(len(idx) * val_frac))
+        test_idx += idx[:n_test].tolist()
+        val_idx += idx[n_test:n_test + n_val].tolist()
+        train_idx += idx[n_test + n_val:].tolist()
+    return train_idx, val_idx, test_idx</code></pre>
+<h4>Step 3: transforms</h4>
+<p>Training gets random augmentation. Evaluation gets only a deterministic resize and centre crop. Both end with the same ToTensor and Normalize using the ImageNet statistics, because the pretrained network was trained on images normalized that way.</p>
+<pre><code>imagenet_mean = [0.485, 0.456, 0.406]
+imagenet_std = [0.229, 0.224, 0.225]
+
+train_tfms = transforms.Compose([
+    transforms.RandomResizedCrop(IMG_SIZE, scale=(0.6, 1.0)),
+    transforms.RandomHorizontalFlip(),
+    transforms.ColorJitter(0.2, 0.2, 0.2),
+    transforms.ToTensor(),
+    transforms.Normalize(imagenet_mean, imagenet_std),
+])
+eval_tfms = transforms.Compose([
+    transforms.Resize(int(IMG_SIZE * 1.14)),
+    transforms.CenterCrop(IMG_SIZE),
+    transforms.ToTensor(),
+    transforms.Normalize(imagenet_mean, imagenet_std),
+])</code></pre>
+<h4>Step 5: the pretrained model with a new head</h4>
+<p>The order matters: freeze everything first, then replace the head. A layer you create after freezing is trainable by default, so the head is the only trainable part. Doing it the other way round freezes the new head as well, and nothing would learn.</p>
+<pre><code>def build_finetune_model(num_classes, freeze_backbone=True):
+    model = models.resnet18(weights=models.ResNet18_Weights.DEFAULT)
+    if freeze_backbone:
+        for p in model.parameters():
+            p.requires_grad = False
+    model.fc = nn.Linear(model.fc.in_features, num_classes)
+    return model.to(device)</code></pre>
+<h4>Step 6: unfreeze</h4>
+<p>After the head has learned something sensible, make everything trainable again and continue with a much smaller learning rate (1e-4 instead of 1e-3). Remember to build a new optimizer after unfreezing, because the old one only knew about the head's parameters.</p>
+<pre><code>def unfreeze(model):
+    for p in model.parameters():
+        p.requires_grad = True</code></pre>
+<h4>Step 7: confusion matrix</h4>
+<p>Rows are the true classes and columns the predicted classes. Each example adds 1 to one cell, so the whole matrix sums to the size of the test set, and the diagonal divided by the total is the accuracy.</p>
+<pre><code>def confusion_matrix(model, loader, num_classes):
+    model.eval()
+    cm = np.zeros((num_classes, num_classes), dtype=int)
+    with torch.no_grad():
+        for x, y in loader:
+            pred = model(x.to(device)).argmax(1).cpu().numpy()
+            for t, p in zip(y.numpy(), pred):
+                cm[t, p] += 1
+    return cm</code></pre>
+<h4>Sample answers to the written questions</h4>
+<ul>
+<li><strong>Worst mistakes, 3 patterns:</strong> look for repeating causes rather than single cases. Typical patterns: (1) two classes that really look alike, (2) a misleading background or lighting, such as one class mostly photographed outdoors, (3) a blurry or partly hidden object, (4) a wrong label in the dataset. Each pattern suggests a different next step: more examples of the confusing pair, more varied backgrounds, better photos, or cleaning labels.</li>
+<li><strong>Conclusion:</strong> a good answer compares the three numbers, says why pretraining helps (the backbone already knows edges and shapes, so only a small head must be learned from your few photos), and names a concrete next data-collection step. If the from-scratch model happened to do as well, say so honestly and consider that your classes may be very easy, or your test set too small to show a difference.</li>
+<li><strong>Stretch, backbone comparison:</strong> smaller models such as MobileNet are much faster and a little less accurate, which matters on a phone. Larger models such as EfficientNet or bigger ResNets are slower and sometimes more accurate. Report both numbers and choose by the product's need, not by accuracy alone.</li>
+</ul>
+
+<h4>Common mistakes and what they look like</h4>
+<ul>
+<li><strong>Forgetting <code>Normalize</code>, or using different statistics:</strong> accuracy is much lower than expected, because the pretrained network sees inputs it was never trained on. The transforms self-check tests this.</li>
+<li><strong>Augmenting validation and test images:</strong> scores change from run to run and are not comparable. Only the training transforms are random.</li>
+<li><strong>Freezing after replacing the head:</strong> nothing trains, and the loss barely moves. The build self-check lists the trainable parameters.</li>
+<li><strong>Not building a new optimizer after unfreezing:</strong> the old optimizer only updates the head, so phase 2 learns almost nothing.</li>
+<li><strong>A fine-tuning learning rate that is too high (for example 1e-2):</strong> the pretrained features are destroyed, and accuracy drops below the head-only result.</li>
+<li><strong>Duplicates or near-duplicates across splits:</strong> inflated test accuracy, as in Module 4. The dataset check catches exact duplicates only, so also avoid taking many near-identical shots of the same object.</li>
+<li><strong>A shortcut in the data:</strong> for example, every photo of class A is on a white table. The model learns the table. Vary backgrounds, and look at your worst mistakes for this.</li>
+<li><strong>Trusting a tiny test set:</strong> with about 25 test images, one mistake is about 4 points. Collect more test photos before drawing conclusions.</li>
+<li><strong>Class order surprises:</strong> <code>ImageFolder</code> sorts classes alphabetically, so label 0 is the first folder alphabetically. Use <code>class_names</code> to read results.</li>
+<li><strong>Frozen backbone, but BatchNorm still updates:</strong> in training mode, a frozen backbone's BatchNorm layers keep updating their running statistics. For this module it does little harm. It is something to know about when results look odd.</li>
+</ul>
+
+<h4>What to do next</h4>
+<ul>
+<li>Complete the three-line reflection and push your notebook and confusion matrix screenshot to your portfolio repo.</li>
+<li>Take the Module 5 quiz in Moodle.</li>
+<li>Keep your dataset. Module 6 switches from images to text, and you can come back to this prototype later and wrap it in a demo app in Module 10.</li>
+</ul>
+
+</body>
+</html>

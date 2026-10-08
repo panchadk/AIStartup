@@ -1,0 +1,37 @@
+// Module 5 quiz - Deep Learning for AI Startups
+$CATEGORY: $course$/Module 5
+
+::M5 Q1:: What is the main benefit of transfer learning? {
+~Removes the need for a test set
+~Makes models larger
+~Eliminates overfitting entirely
+=Needs less data and training time#The pretrained backbone already knows edges, textures and shapes, so you only adapt it with a small dataset.
+}
+
+::M5 Q2:: What does freezing a backbone mean? {
+=Not updating its weights during training#Frozen layers keep their pretrained weights. Only the unfrozen parts, such as the new head, learn.
+~Deleting it
+~Training it twice
+~Running it on CPU only
+}
+
+::M5 Q3:: Why use data augmentation? {
+~To shrink the dataset
+~To change labels
+=To add variety and reduce overfitting#Flips, crops and colour changes create new training examples, so the model cannot just memorize the exact photos.
+~To speed up inference
+}
+
+::M5 Q4:: What does a confusion matrix show? {
+~Training time per epoch
+=Which classes are mistaken for which#Rows are true classes and columns are predicted classes, so off-diagonal cells show specific mix-ups.
+~GPU memory
+~Learning rate history
+}
+
+::M5 Q5:: When fine-tuning the whole network, the learning rate should usually be: {
+~Very high
+~Exactly zero
+~Random each step
+=Low, so pretrained features are not destroyed#Big steps would overwrite the useful pretrained features. Small steps adjust them gently.
+}

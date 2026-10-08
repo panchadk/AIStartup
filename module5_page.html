@@ -1,0 +1,48 @@
+<h3>Module 5: Vision product prototype</h3>
+<p><strong>Project:</strong> build an image classifier for a product idea of your own. You collect the photos, train a baseline from scratch, then fine-tune a pretrained model on the same data. <strong>Time:</strong> about 10 hours core, plus about 5 hours for the stretch challenge.</p>
+<p><strong>Done when:</strong> you have a dataset of at least 3 classes with 50 or more images each; your fine-tuned model scores at least as well as the from-scratch model on the test set and clearly above chance; and you produced a confusion matrix and reviewed the model's worst mistakes.</p>
+<p><a href="https://colab.research.google.com/github/panchadk/AIStartup/blob/main/module5_vision_prototype.ipynb" target="_blank" rel="noopener"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"></a></p>
+<p><em>Click the button to open the interactive notebook in Google Colab. Choose a GPU runtime, then File, Save a copy in Drive, and work in your own copy.</em></p>
+
+<p><strong>Lecture notes:</strong> <a href="https://panchadk.github.io/AIStartup/module5_notes.html" target="_blank" rel="noopener">read the illustrated notes</a> (about 20 minutes, with diagrams). Read them first, or return to them when you are stuck.</p>
+
+<h4>Before you start: collect your photos</h4>
+<p>This module starts with your own data. Pick a product idea where a camera helps (sorting recyclables, plant diseases, product defects, food types, parts), and photograph <strong>3 or more classes with at least 50 images each</strong>. Vary backgrounds, lighting and angles, and avoid duplicates. Put one folder per class inside a folder named <code>my_data</code>, zip it as <code>my_data.zip</code>, and upload it in Colab. No photos yet? The notebook can build a small demo dataset from CIFAR-10 so you can start straight away.</p>
+
+<h4>Notes (about 10 minutes)</h4>
+<ul>
+<li>A <strong>convolutional neural network (CNN)</strong> learns local visual patterns: edges first, then textures, then object parts.</li>
+<li><strong>Transfer learning</strong> starts from a model pretrained on a large dataset and adapts it. It needs far less data and compute than training from scratch.</li>
+<li>Two common approaches: <strong>freeze</strong> the backbone and train only a new head, or <strong>unfreeze</strong> and fine-tune everything at a low learning rate. A good recipe does the first, then the second.</li>
+<li><strong>Data augmentation</strong> (flips, crops, colour jitter) adds variety and reduces overfitting on small datasets. Apply it to training images only.</li>
+<li>Use a <strong>confusion matrix</strong>, not just accuracy, to see which classes get mixed up.</li>
+<li>Small test sets are noisy: with about 25 test images, one mistake moves the accuracy by about 4 points.</li>
+</ul>
+
+<h4>Exercises (all in the notebook)</h4>
+<ol>
+<li><strong>Collect and check your dataset.</strong> At least 3 classes, 50 or more images each, no duplicates or unreadable files.</li>
+<li><strong>Split it.</strong> Write a stratified split so each class is divided in the same proportions.</li>
+<li><strong>Transforms.</strong> Build a training pipeline with augmentation and an evaluation pipeline without it, both normalized like ImageNet.</li>
+<li><strong>Baseline.</strong> Train a ResNet-18 from scratch on your photos and record its test accuracy.</li>
+<li><strong>Transfer learning.</strong> Load a pretrained ResNet-18, replace the head, and freeze the backbone.</li>
+<li><strong>Two phases.</strong> Train the head, then unfreeze and fine-tune everything at a lower learning rate.</li>
+<li><strong>Confusion matrix and worst mistakes.</strong> Write the confusion matrix, then review the 10 most confident wrong predictions and write down 3 patterns.</li>
+<li><strong>Compare</strong> from scratch, head only, and fine-tuned, and write your conclusion.</li>
+<li><strong>Stretch:</strong> compare two backbones on accuracy versus speed.</li>
+</ol>
+
+<h4>Hint ladder</h4>
+<ol>
+<li>The torchvision documentation and a web search.</li>
+<li>The written hints under each step in the notebook.</li>
+<li>If a self-check fails, read its message: each one names the most likely mistake.</li>
+<li>Reference solution: open <a href="https://panchadk.github.io/AIStartup/module5_solution.html" target="_blank" rel="noopener">the solution page</a> only after your own honest attempt.</li>
+</ol>
+
+<h4>Before you submit</h4>
+<ul>
+<li>Every self-check cell in the notebook passes, and you wrote your mistake analysis and conclusion.</li>
+<li>Take the Module 5 quiz (pass mark 4 of 5).</li>
+<li>Push the notebook, a screenshot of your confusion matrix, and a three-line reflection (your product idea, what surprised you, what you would collect next) to <code>module-05</code> in your portfolio repo. Do not push private photos. Then submit the link in the assignment below.</li>
+</ul>
