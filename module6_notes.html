@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Module 6 lecture notes: Semantic search engine</title>
+<style>
+  :root { --navy:#1F3864;--ink:#222222;--bg:#FFFFFF;--code-bg:#F3F6FA;--hl-bg:#FFF4E5;--accent:#D9730D;--muted:#8A94A6; --muted-text:#555555; --good:#2E7D32; }
+  body { font-family: Arial, Helvetica, sans-serif; max-width: 860px; margin: 0 auto; padding: 24px; line-height: 1.65; color: var(--ink); background: var(--bg); }
+  h1 { color: var(--navy); margin-bottom: 4px; }
+  h2 { color: var(--navy); border-bottom: 3px solid var(--navy); padding-bottom: 6px; margin-top: 40px; }
+  h3 { color: var(--navy); margin-top: 26px; }
+  strong { color: var(--navy); }
+  a { color: var(--navy); }
+  .meta { color: var(--muted-text); margin-top: 0; }
+  code { font-family: Consolas, "Courier New", monospace; background: var(--code-bg); padding: 1px 4px; border-radius: 3px; }
+  pre { background: var(--code-bg); border-left: 4px solid var(--navy); padding: 14px; overflow-x: auto; border-radius: 4px; }
+  pre code { background: none; padding: 0; }
+  .toc { background: var(--code-bg); border-radius: 6px; padding: 12px 20px; }
+  .toc ol { margin: 6px 0; }
+  .note { background: var(--hl-bg); border-left: 4px solid var(--accent); padding: 12px 16px; border-radius: 4px; margin: 18px 0; }
+  .key { background: var(--code-bg); border-left: 4px solid var(--navy); padding: 12px 16px; border-radius: 4px; margin: 18px 0; }
+  figure { margin: 26px 0; }
+  figcaption { font-size: .9em; color: var(--muted-text); text-align: center; margin-top: 6px; }
+  svg.fig { width: 100%; height: auto; max-width: 760px; display: block; margin: 0 auto; }
+  table { border-collapse: collapse; width: 100%; margin: 14px 0; }
+  th, td { border: 1px solid var(--muted); padding: 7px 10px; text-align: left; vertical-align: top; }
+  th { background: var(--code-bg); color: var(--navy); }
+  details { background: var(--code-bg); border-radius: 6px; padding: 8px 14px; margin: 10px 0; }
+  summary { cursor: pointer; font-weight: bold; color: var(--navy); }
+  .nav { display: flex; justify-content: space-between; gap: 12px; margin-top: 40px; padding-top: 14px; border-top: 1px solid var(--muted); flex-wrap: wrap; }
+
+svg .box{fill:var(--code-bg);stroke:var(--navy);stroke-width:2}
+svg .box2{fill:var(--bg);stroke:var(--navy);stroke-width:2}
+svg .hl{fill:var(--hl-bg);stroke:var(--accent);stroke-width:2}
+svg .t{fill:var(--ink);font-family:Arial,Helvetica,sans-serif;font-size:14px}
+svg .tb{font-weight:bold}
+svg .ts{font-size:12px}
+svg .tl{font-size:16px}
+svg .tn{fill:var(--navy)}
+svg .ta{fill:var(--accent)}
+svg .tm{fill:var(--muted)}
+svg .ln{stroke:var(--navy);stroke-width:2.5;fill:none}
+svg .la{stroke:var(--accent);stroke-width:2.5;fill:none}
+svg .lg{stroke:var(--muted);stroke-width:1;fill:none;opacity:.55}
+svg .ax{stroke:var(--ink);stroke-width:1.5;fill:none}
+svg .fw{stroke:var(--navy);stroke-width:2.5;fill:none}
+svg .bw{stroke:var(--accent);stroke-width:2.5;fill:none}
+svg .dash{stroke-dasharray:6 4}
+svg .mN{fill:var(--navy)}
+svg .mA{fill:var(--accent)}
+svg .dotN{fill:var(--navy)}
+svg .dotA{fill:var(--accent)}
+svg .sqN{fill:var(--navy)}
+svg .sqA{fill:var(--accent)}
+svg .sqM{fill:var(--muted)}
+svg .tbg{fill:var(--bg);font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:bold}
+svg .node{fill:var(--bg);stroke:var(--navy);stroke-width:2}
+
+  @media (prefers-color-scheme: dark) {
+    :root { --navy:#8FB4F0;--ink:#E6E6E6;--bg:#14181F;--code-bg:#1E2530;--hl-bg:#3A2C12;--accent:#F0A040;--muted:#6B778C; --muted-text:#B5BCC8; --good:#66BB6A; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Module 6: Semantic search engine</h1>
+<p class="meta">Lecture notes with diagrams. Reading time: about 20 minutes. Read once, then choose your documents and start the notebook. Come back here when a self-check fails.</p>
+
+<div class="toc"><strong>In these notes</strong>
+<ol>
+<li><a href="#big">The big picture</a></li>
+<li><a href="#embed">Embeddings: meaning as numbers</a></li>
+<li><a href="#attn">How a transformer makes an embedding</a></li>
+<li><a href="#cos">Cosine similarity</a></li>
+<li><a href="#chunk">Chunking your documents</a></li>
+<li><a href="#pipe">The search pipeline</a></li>
+<li><a href="#eval">Measuring a search engine</a></li>
+<li><a href="#terms">Key terms</a>, <a href="#pitfalls">pitfalls</a>, and <a href="#check">check yourself</a></li>
+</ol></div>
+
+<h2 id="big">1. The big picture</h2>
+<p>Ordinary search matches <strong>words</strong>. Ask for "pause the program" and it looks for pages containing "pause", "program" and nothing else. A page that says "sleep: delay execution for a number of seconds" is a perfect answer, but it shares no words with your question, so keyword search misses it.</p>
+<p><strong>Semantic search</strong> matches <strong>meaning</strong>. It turns the question and every passage into numbers that capture meaning, and then finds the passages closest to the question. This is the engine inside many AI products: document search, support bots, recommendation, and the "retrieval" step of the chatbots you will build in Module 7.</p>
+<div class="key"><strong>No training in this module.</strong> You use a pretrained embedding model as it is. Your skill is in chunking, ranking, and, above all, <em>measuring</em> whether the search works.</div>
+
+<h2 id="embed">2. Embeddings: meaning as numbers</h2>
+<p>An <strong>embedding</strong> is a list of numbers (a vector) that represents a piece of text. The model you use outputs <strong>384 numbers</strong> per text. The key property: texts with similar meaning get similar vectors.</p>
+<figure>
+<svg class="fig" viewBox="0 0 760 270" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="An embedding model turns text into tokens, reads them with a transformer, and outputs a vector of 384 numbers"><defs><marker id="aN62" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA62" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><rect x="10" y="70" width="150" height="70" rx="8" class="box2"/><text x="85.0" y="101.0" class="t tb" text-anchor="middle" >Text</text><text x="85.0" y="119.0" class="t ts" text-anchor="middle" >A puppy plays outside</text><rect x="200" y="70" width="150" height="70" rx="8" class="box"/><text x="275.0" y="101.0" class="t tb" text-anchor="middle" >Tokens</text><text x="275.0" y="119.0" class="t ts" text-anchor="middle" >a | pupp | y | plays | outside</text><rect x="390" y="70" width="150" height="70" rx="8" class="box"/><text x="465.0" y="101.0" class="t tb" text-anchor="middle" >Transformer</text><text x="465.0" y="119.0" class="t ts" text-anchor="middle" >reads all tokens together</text><rect x="580" y="50" width="170" height="110" rx="8" class="hl"/><text x="665.0" y="83.0" class="t tb" text-anchor="middle" >Vector</text><text x="665.0" y="101.0" class="t ts" text-anchor="middle" >0.12  -0.40  0.07  0.31</text><text x="665.0" y="119.0" class="t ts" text-anchor="middle" >...</text><text x="665.0" y="137.0" class="t ts" text-anchor="middle" >384 numbers</text><line x1="160" y1="105" x2="198" y2="105" class="fw" marker-end="url(#aN62)"/><line x1="350" y1="105" x2="388" y2="105" class="fw" marker-end="url(#aN62)"/><line x1="540" y1="105" x2="578" y2="105" class="fw" marker-end="url(#aN62)"/><text x="380" y="200" class="t tb" text-anchor="middle" >Same model, same recipe, for every text you give it.</text><text x="380" y="226" class="t" text-anchor="middle" >Texts with similar meaning end up with similar vectors.</text><text x="380" y="252" class="t ts tm" text-anchor="middle" >With normalize_embeddings=True every vector has length 1.</text></svg>
+<figcaption>An embedding model reads text and outputs one vector. The same model is used for your documents and for the questions.</figcaption>
+</figure>
+<p>It helps to picture each vector as a point on a map. Real maps have 384 dimensions, which we cannot draw, but the idea is the same as in two dimensions:</p>
+<figure>
+<svg class="fig" viewBox="0 0 760 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A 2-D picture of embeddings: sentences with similar meaning are close together"><defs><marker id="aN61" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA61" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><rect x="20" y="20" width="720" height="290" rx="10" class="box2"/><line x1="320" y1="165" x2="180" y2="80" class="la dash"/><line x1="320" y1="165" x2="250" y2="145" class="la dash"/><line x1="320" y1="165" x2="200" y2="205" class="la dash"/><circle cx="180" cy="80" r="7" class="sqN"/><text x="168" y="84" class="t ts" text-anchor="end" >dog in the garden</text><circle cx="250" cy="145" r="7" class="sqN"/><text x="238" y="149" class="t ts" text-anchor="end" >kitten naps</text><circle cx="200" cy="205" r="7" class="sqN"/><text x="188" y="209" class="t ts" text-anchor="end" >puppy plays outside</text><circle cx="560" cy="80" r="7" class="sqA"/><text x="571" y="84" class="t ts" text-anchor="start" >stock market falls</text><circle cx="610" cy="125" r="7" class="sqA"/><text x="621" y="129" class="t ts" text-anchor="start" >bank raises rates</text><circle cx="470" cy="235" r="7" class="sqM"/><text x="481" y="239" class="t ts" text-anchor="start" >bake the bread</text><circle cx="540" cy="262" r="7" class="sqM"/><text x="551" y="266" class="t ts" text-anchor="start" >boil the pasta</text><polygon points="320,153 323,161 332,161 325,167 328,177 320,171 312,177 315,167 308,161 317,161" class="dotA"/><text x="336" y="169" class="t ts ta" text-anchor="start" >your question: a young dog running</text><text x="380" y="296" class="t ts tb" text-anchor="middle" >Similar meaning means nearby. Search is finding the nearest points to the question.</text><text x="380" y="12" class="t ts tm" text-anchor="middle" >A made-up 2-D map of meaning (real embeddings have 384 dimensions)</text></svg>
+<figcaption>Similar meaning means nearby. A question about a young dog lands near the other dog sentences and far from finance and cooking.</figcaption>
+</figure>
+<p>So <strong>searching means finding the points nearest to the question's point.</strong> The same model must embed both the documents and the question, otherwise their maps do not match.</p>
+
+<h2 id="attn">3. How a transformer makes an embedding</h2>
+<p>Embedding models are <strong>transformers</strong>. You do not need the details yet, but the central idea is <strong>attention</strong>: when the model reads a word, it looks at all the other words and decides how much each one matters.</p>
+<figure>
+<svg class="fig" viewBox="0 0 760 285" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Attention weights: the word it pays most attention to the word animal"><defs><marker id="aN63" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA63" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><text x="40" y="150" class="t" text-anchor="middle" >The</text><text x="103" y="150" class="t tb" text-anchor="middle" >animal</text><text x="166" y="150" class="t" text-anchor="middle" >did</text><text x="229" y="150" class="t" text-anchor="middle" >not</text><text x="292" y="150" class="t" text-anchor="middle" >cross</text><text x="355" y="150" class="t" text-anchor="middle" >the</text><text x="418" y="150" class="t" text-anchor="middle" >street</text><text x="481" y="150" class="t" text-anchor="middle" >because</text><text x="544" y="150" class="t tb" text-anchor="middle" >it</text><text x="607" y="150" class="t" text-anchor="middle" >was</text><text x="670" y="150" class="t" text-anchor="middle" >tired</text><path d="M544,134 Q323.5,12.980000000000004 103,134" class="la" style="stroke-width:7;opacity:1"/><path d="M544,134 Q481.0,82.28 418,134" class="ln" style="stroke-width:1.5;opacity:0.55"/><path d="M544,134 Q607.0,82.28 670,134" class="ln" style="stroke-width:3;opacity:0.55"/><path d="M544,134 Q418.0,54.56 292,134" class="ln" style="stroke-width:1.2;opacity:0.55"/><text x="380" y="18" class="t ts tm" text-anchor="middle" >To understand 'it', the model looks at the other words and weighs how much each matters</text><text x="380" y="196" class="t ts ta" text-anchor="middle" >thick line = high attention: 'it' refers to 'animal'</text><text x="380" y="240" class="t" text-anchor="middle" >Attention lets every word take information from the words that matter for it,</text><text x="380" y="262" class="t" text-anchor="middle" >so the same word gets a different meaning in a different sentence.</text></svg>
+<figcaption>In 'the animal did not cross the street because it was tired', attention links 'it' strongly to 'animal'. A different sentence would link it elsewhere.</figcaption>
+</figure>
+<ul>
+<li>Text is first cut into <strong>tokens</strong>: words or pieces of words.</li>
+<li>Attention lets each token pull in information from the tokens that matter for it. The word "bank" gets a different meaning next to "river" than next to "loan".</li>
+<li>The model combines everything into one vector for the whole text.</li>
+<li>Models read a <strong>limited length</strong> (a few hundred tokens for this one; the notebook prints the exact limit). Text beyond it is simply ignored, which is one reason to chunk.</li>
+</ul>
+
+<h2 id="cos">4. Cosine similarity</h2>
+<p>To compare the question's vector with a passage's vector, we use the <strong>cosine similarity</strong>: the cosine of the angle between them.</p>
+<figure>
+<svg class="fig" viewBox="0 0 760 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Cosine similarity for vectors at 20, 90 and 180 degrees"><defs><marker id="aN64" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA64" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><text x="130" y="24" class="t tb tn" text-anchor="middle" >Similar meaning</text><circle cx="90" cy="170" r="3" class="dotN"/><line x1="90" y1="170" x2="190" y2="170" class="fw" marker-end="url(#aN64)"/><line x1="90" y1="170" x2="184.0" y2="135.8" class="bw" marker-end="url(#aA64)"/><path d="M124,170 A34,34 0 0 0 121.9,158.4" class="lg" style="opacity:1;stroke:var(--ink)"/><text x="130" y="245" class="t tb" text-anchor="middle" >cosine = 0.94</text><text x="130" y="265" class="t ts tm" text-anchor="middle" >angle 20 degrees</text><text x="380" y="24" class="t tb tn" text-anchor="middle" >Unrelated</text><circle cx="340" cy="170" r="3" class="dotN"/><line x1="340" y1="170" x2="440" y2="170" class="fw" marker-end="url(#aN64)"/><line x1="340" y1="170" x2="340.0" y2="70.0" class="bw" marker-end="url(#aA64)"/><path d="M374,170 A34,34 0 0 0 340.0,136.0" class="lg" style="opacity:1;stroke:var(--ink)"/><text x="380" y="245" class="t tb" text-anchor="middle" >cosine = 0</text><text x="380" y="265" class="t ts tm" text-anchor="middle" >angle 90 degrees</text><text x="630" y="24" class="t tb tn" text-anchor="middle" >Opposite</text><circle cx="590" cy="170" r="3" class="dotN"/><line x1="590" y1="170" x2="690" y2="170" class="fw" marker-end="url(#aN64)"/><line x1="590" y1="170" x2="490.0" y2="170.0" class="bw" marker-end="url(#aA64)"/><text x="630" y="245" class="t tb" text-anchor="middle" >cosine = -1</text><text x="630" y="265" class="t ts tm" text-anchor="middle" >angle 180 degrees</text><text x="380" y="300" class="t tb" text-anchor="middle" >Cosine similarity looks only at the direction (the angle), not at how long the vectors are.</text></svg>
+<figcaption>Vectors pointing the same way are similar (cosine near 1). At 90 degrees they are unrelated (0). Opposite directions give -1.</figcaption>
+</figure>
+<pre><code>cosine(a, b) = (a . b) / (length of a x length of b)</code></pre>
+<p>A tiny example: <code>a = [1, 0]</code> and <code>b = [1, 1]</code>. The dot product is 1. The lengths are 1 and about 1.414. So the cosine is 1 / 1.414 = <strong>0.707</strong>, which is the cosine of 45 degrees.</p>
+<ul>
+<li><strong>It ignores length.</strong> Only direction counts, so a long passage and a short one about the same thing can still match.</li>
+<li><strong>With unit-length vectors, cosine equals the dot product.</strong> That is why we normalize the embeddings: the whole search becomes one matrix multiplication.</li>
+<li><strong>Use the ranking, not the number.</strong> What counts as a "high" score depends on the model. Compare scores within one search, not across models.</li>
+</ul>
+
+<h2 id="chunk">5. Chunking your documents</h2>
+<p>You rarely embed a whole document. A 20-page document has dozens of topics, and one vector cannot represent all of them. So you cut it into <strong>chunks</strong> and embed each one.</p>
+<figure>
+<svg class="fig" viewBox="0 0 760 345" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The same document divided into small, medium and large chunks"><defs><marker id="aN65" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA65" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><text x="380" y="20" class="t tb tn" text-anchor="middle" >The same document cut at three chunk sizes (blocks = chunks)</text><text x="10" y="68" class="t tb" text-anchor="start" >Small: 30 words</text><rect x="200.0" y="50" width="34.1" height="32" rx="3" class="sqN"/><rect x="237.1" y="50" width="34.1" height="32" rx="3" class="sqM"/><rect x="274.3" y="50" width="34.1" height="32" rx="3" class="sqN"/><rect x="311.4" y="50" width="34.1" height="32" rx="3" class="sqM"/><rect x="348.6" y="50" width="34.1" height="32" rx="3" class="sqN"/><rect x="385.7" y="50" width="34.1" height="32" rx="3" class="sqM"/><rect x="422.9" y="50" width="34.1" height="32" rx="3" class="sqN"/><rect x="460.0" y="50" width="34.1" height="32" rx="3" class="sqM"/><rect x="497.1" y="50" width="34.1" height="32" rx="3" class="sqN"/><rect x="534.3" y="50" width="34.1" height="32" rx="3" class="sqM"/><rect x="571.4" y="50" width="34.1" height="32" rx="3" class="sqN"/><rect x="608.6" y="50" width="34.1" height="32" rx="3" class="sqM"/><rect x="645.7" y="50" width="34.1" height="32" rx="3" class="sqN"/><rect x="682.9" y="50" width="34.1" height="32" rx="3" class="sqM"/><text x="200" y="106" class="t ts" text-anchor="start" >focused, but may lose context</text><text x="10" y="158" class="t tb" text-anchor="start" >Medium: 120 words</text><rect x="200.0" y="140" width="101.0" height="32" rx="3" class="sqN"/><rect x="304.0" y="140" width="101.0" height="32" rx="3" class="sqM"/><rect x="408.0" y="140" width="101.0" height="32" rx="3" class="sqN"/><rect x="512.0" y="140" width="101.0" height="32" rx="3" class="sqM"/><rect x="616.0" y="140" width="101.0" height="32" rx="3" class="sqN"/><text x="200" y="196" class="t ts" text-anchor="start" >a good balance for many texts</text><text x="10" y="248" class="t tb" text-anchor="start" >Large: 300 words</text><rect x="200.0" y="230" width="257.0" height="32" rx="3" class="sqN"/><rect x="460.0" y="230" width="257.0" height="32" rx="3" class="sqM"/><text x="200" y="286" class="t ts" text-anchor="start" >lots of context, but topics blur together</text><text x="380" y="330" class="t ts tb" text-anchor="middle" >Compare sizes at the same text budget, or big chunks win simply by covering more text.</text></svg>
+<figcaption>The same document at three chunk sizes. There is no best size for every text: you measure.</figcaption>
+</figure>
+<ul>
+<li><strong>Small chunks</strong> are focused, so a specific question matches them well. But they can lose the context around them.</li>
+<li><strong>Large chunks</strong> carry context, but the vector blurs several topics together, so matching gets vaguer.</li>
+<li><strong>Keep paragraphs whole.</strong> Cutting a passage in half makes both halves harder to find. Pack whole paragraphs together up to the limit, and cut inside a paragraph only when it is longer than the limit by itself.</li>
+<li><strong>Remember where each chunk came from</strong> (the file name) so you can show sources.</li>
+<li><strong>Overlap</strong> is an option you may meet elsewhere: neighbouring chunks share a few sentences so that nothing falls exactly on a boundary. With paragraph-aware chunking you need it less.</li>
+</ul>
+
+<h2 id="pipe">6. The search pipeline</h2>
+<figure>
+<svg class="fig" viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Search pipeline: an indexing step done once and a search step done for each question"><defs><marker id="aN66" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA66" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><text x="380" y="20" class="t tb tn" text-anchor="middle" >INDEXING: once, ahead of time</text><rect x="10" y="36" width="160" height="52" rx="8" class="box"/><text x="90.0" y="67.0" class="t tb" text-anchor="middle" >Documents</text><line x1="170" y1="62" x2="196" y2="62" class="fw" marker-end="url(#aN66)"/><rect x="198" y="36" width="160" height="52" rx="8" class="box"/><text x="278.0" y="67.0" class="t tb" text-anchor="middle" >Chunks</text><line x1="358" y1="62" x2="384" y2="62" class="fw" marker-end="url(#aN66)"/><rect x="386" y="36" width="160" height="52" rx="8" class="box"/><text x="466.0" y="67.0" class="t tb" text-anchor="middle" >Embed each chunk</text><line x1="546" y1="62" x2="572" y2="62" class="fw" marker-end="url(#aN66)"/><rect x="574" y="36" width="160" height="52" rx="8" class="hl"/><text x="654.0" y="67.0" class="t tb" text-anchor="middle" >Vector index</text><line x1="10" y1="120" x2="750" y2="120" class="lg" style="opacity:1"/><text x="380" y="150" class="t tb tn" text-anchor="middle" >SEARCHING: every time someone asks</text><rect x="10" y="166" width="160" height="52" rx="8" class="box"/><text x="90.0" y="197.0" class="t tb" text-anchor="middle" >Question</text><line x1="170" y1="192" x2="196" y2="192" class="fw" marker-end="url(#aN66)"/><rect x="198" y="166" width="160" height="52" rx="8" class="box"/><text x="278.0" y="197.0" class="t tb" text-anchor="middle" >Embed it</text><line x1="358" y1="192" x2="384" y2="192" class="fw" marker-end="url(#aN66)"/><rect x="386" y="166" width="160" height="52" rx="8" class="box"/><text x="466.0" y="197.0" class="t tb" text-anchor="middle" >Cosine vs all chunks</text><line x1="546" y1="192" x2="572" y2="192" class="fw" marker-end="url(#aN66)"/><rect x="574" y="166" width="160" height="52" rx="8" class="hl"/><text x="654.0" y="197.0" class="t tb" text-anchor="middle" >Top 3 passages</text><path d="M848,88" class="lg"/><text x="380" y="260" class="t" text-anchor="middle" >The expensive work (embedding the documents) happens once.</text><text x="380" y="282" class="t" text-anchor="middle" >A search is only one embedding plus a fast comparison against stored vectors.</text></svg>
+<figcaption>The expensive part happens once. Each search needs only one new embedding.</figcaption>
+</figure>
+<p>Embedding all your chunks is done <strong>once</strong>, ahead of time, and the vectors are stored. When a question arrives, you embed it, compare it with every stored vector, and return the top few.</p>
+<div class="note"><strong>How big can this get?</strong> A vector of 384 numbers uses 384 x 4 bytes = 1,536 bytes. For 100,000 chunks that is about <strong>154 MB</strong>, which fits in memory, and comparing one question against all of them takes a few milliseconds. This "brute force" approach is perfectly fine up to hundreds of thousands of chunks. For many millions, products use approximate nearest-neighbour indexes (for example FAISS or a vector database) that trade a little accuracy for speed.</div>
+
+<h2 id="eval">7. Measuring a search engine</h2>
+<p>Trying five queries and feeling good is not evidence. You need a <strong>test set</strong>: queries written by you, each with a way to recognize a correct result.</p>
+<ul>
+<li><strong>Write queries the way a user would ask</strong>, not by copying words from the document. If you copy words, you only test keyword matching.</li>
+<li><strong>Gold phrases:</strong> for each query, a phrase that marks the right passage (and is not in the query). A retrieved chunk is <em>relevant</em> if it contains one.</li>
+<li><strong>Hit rate at k (recall at k):</strong> the share of queries for which a relevant chunk appears in the top k results. Your target: at least 15 of 20 in the top 3.</li>
+<li><strong>Beat a baseline.</strong> Compare with plain keyword search. If your semantic search is not clearly better, find out why.</li>
+</ul>
+<h3>A fairness trap when you compare chunk sizes</h3>
+<p>If every chunk size returns its top 3, a size with 300-word chunks returns about 900 words, while 30-word chunks return about 90. The big ones are more likely to contain the answer <em>by luck</em>. To compare sizes fairly, give each the <strong>same text budget</strong>. For example, around 360 words: 12 chunks of 30 words, 6 of 60, 3 of 120, and 1 of 300.</p>
+<h3>Reading the failures</h3>
+<p>For every missed query, ask: was the answer not in the documents? Was the gold phrase too narrow? Was the chunk cut badly? Or did the model really fail? Only the last one is a model problem, and the other three are about your data and your test.</p>
+<h3>Making it better</h3>
+<ul>
+<li><strong>Re-ranking:</strong> fetch the top 20 quickly, then let a slower, smarter model that reads the question and passage <em>together</em> (a cross-encoder) pick the best 3.</li>
+<li><strong>Hybrid search:</strong> combine keyword matching (good for exact names and codes) with semantic matching (good for paraphrases).</li>
+</ul>
+
+<h2 id="terms">8. Key terms</h2>
+<table>
+<tr><th>Term</th><th>Plain meaning</th></tr>
+<tr><td>Embedding</td><td>A vector of numbers that represents the meaning of a text</td></tr>
+<tr><td>Semantic search</td><td>Finding text by meaning rather than by exact words</td></tr>
+<tr><td>Cosine similarity</td><td>How closely two vectors point the same way, from -1 to 1</td></tr>
+<tr><td>Attention</td><td>How a model weighs which other words matter for each word</td></tr>
+<tr><td>Chunk</td><td>A focused passage cut from a longer document</td></tr>
+<tr><td>Top-k</td><td>The k best matches for a query</td></tr>
+<tr><td>Gold phrase</td><td>A phrase that marks a correct passage in your test set</td></tr>
+<tr><td>Hit rate (recall at k)</td><td>The share of queries with a relevant result in the top k</td></tr>
+<tr><td>Re-ranking</td><td>A second, slower step that reorders the top results</td></tr>
+</table>
+
+<h2 id="pitfalls">9. Common pitfalls</h2>
+<ul>
+<li>Embedding the documents with one model and the question with another.</li>
+<li>Test queries that copy words from the document.</li>
+<li>Chunks that cut a passage in half, or chunks so big that topics blur.</li>
+<li>Comparing chunk sizes with the same k instead of the same text budget.</li>
+<li>Sorting results the wrong way round.</li>
+<li>Judging the system by a handful of examples.</li>
+<li>Changing the chunk size and forgetting to embed again.</li>
+</ul>
+
+<h2 id="check">10. Check yourself</h2>
+<p>Try each question first, then open the answer.</p>
+<details><summary>Question 1: A question has a cosine similarity of 0.82 with passage A and 0.31 with passage B. What can you conclude?</summary><p>Passage A is much closer in meaning to the question than passage B, so A ranks higher. Do not read too much into the absolute numbers, because what counts as high depends on the model. The ranking is what matters.</p></details>
+<details><summary>Question 2: You embed 100,000 chunks with a 384-number model stored as 32-bit floats. How much memory do the vectors need?</summary><p>100,000 x 384 x 4 bytes = 153,600,000 bytes, about <strong>154 MB</strong>. That fits comfortably in memory on a normal laptop.</p></details>
+<details><summary>Question 3: With k = 3, your 300-word chunks score 17 of 20 and your 60-word chunks score 15 of 20. Can you conclude that larger chunks are better?</summary><p>No. At k = 3, the 300-word chunks return about 900 words and the 60-word chunks only about 180, so the larger chunks had five times more text in which to find the answer. Compare at the same text budget before concluding anything.</p></details>
+
+<h2>Next steps</h2>
+<ul>
+<li>Open the <a href="https://colab.research.google.com/github/panchadk/AIStartup/blob/main/module6_semantic_search.ipynb" target="_blank" rel="noopener">Module 6 notebook in Colab</a> and start building.</li>
+<li>Back to the <a href="https://panchadk.github.io/AIStartup/module6_page.html">Module 6 page</a>.</li>
+</ul>
+<div class="nav"><a href="https://panchadk.github.io/AIStartup/module5_notes.html">&larr; Previous: Module 5 notes</a><span></span></div>
+
+</body>
+</html>

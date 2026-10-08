@@ -1,0 +1,37 @@
+// Module 6 quiz - Deep Learning for AI Startups
+$CATEGORY: $course$/Module 6
+
+::M6 Q1:: What is an embedding? {
+~A type of GPU
+~A loss function
+=A vector representing the meaning of text#An embedding model turns text into a list of numbers, so that texts with similar meaning get similar vectors.
+~A dataset format
+}
+
+::M6 Q2:: Which metric is commonly used to compare embeddings? {
+~Word count
+=Cosine similarity#Cosine similarity measures the angle between two vectors, so it compares direction (meaning), not length.
+~Batch size
+~Dropout rate
+}
+
+::M6 Q3:: What problem does attention address? {
+=Deciding which parts of the input matter for each position#Attention lets the model weigh how much each other word matters when it processes a given word.
+~Compressing images
+~Choosing a learning rate
+~Labeling data
+}
+
+::M6 Q4:: Why split documents into chunks? {
+~To hide data
+~To remove embeddings
+~To avoid using a model
+=Models and retrieval work better on focused passages#One vector for a long page blurs many topics together, and models read only a limited amount of text.
+}
+
+::M6 Q5:: A query uses different words than the document but means the same. Which search finds it? {
+~Exact keyword match only
+~Alphabetical sort
+=Semantic search with embeddings#Embeddings capture meaning, so a question and a passage with different words but the same meaning end up close together.
+~Random sampling
+}

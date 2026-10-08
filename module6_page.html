@@ -1,0 +1,47 @@
+<h3>Module 6: Semantic search engine</h3>
+<p><strong>Project:</strong> build a search engine that finds documents by meaning, not by matching exact words. You embed your own documents, rank them against a question with cosine similarity, and measure how good the search is. <strong>Time:</strong> about 8 hours core, plus about 4 hours for the stretch challenge.</p>
+<p><strong>Done when:</strong> you embedded 100 or more passages from your own documents; your search returns a relevant passage in its top 3 results for at least 15 of 20 test queries that you wrote; and you compared chunk sizes and can explain which retrieves best.</p>
+<p><a href="https://colab.research.google.com/github/panchadk/AIStartup/blob/main/module6_semantic_search.ipynb" target="_blank" rel="noopener"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"></a></p>
+<p><em>Click the button to open the interactive notebook in Google Colab. Then choose File, Save a copy in Drive, and work in your own copy. A free CPU runtime is enough for this module.</em></p>
+
+<p><strong>Lecture notes:</strong> <a href="https://panchadk.github.io/AIStartup/module6_notes.html" target="_blank" rel="noopener">read the illustrated notes</a> (about 20 minutes, with diagrams). Read them first, or return to them when you are stuck.</p>
+
+<h4>Before you start: choose your documents</h4>
+<p>Pick text you care about: lecture notes, product manuals, FAQs, articles, policies. Use plain <code>.txt</code> or <code>.md</code> files, about 6,000 words or more in total, with paragraphs separated by a blank line. Put them in a folder named <code>my_docs</code> and upload it to Colab. No documents yet? The notebook can build a demo collection from the documentation of 25 Python standard-library modules. You will reuse your index in Module 7 to build a chatbot.</p>
+
+<h4>Notes (about 10 minutes)</h4>
+<ul>
+<li>An <strong>embedding</strong> is a vector (a list of numbers) that represents the meaning of a text. Similar meanings give similar vectors.</li>
+<li><strong>Cosine similarity</strong> compares two vectors by the angle between them. It is the standard way to rank search results.</li>
+<li><strong>Attention</strong> lets a model weigh which other words matter for each word. Transformers are built from attention layers, and they produce the embeddings.</li>
+<li>Long documents are split into <strong>chunks</strong>. Chunk size affects both relevance and cost.</li>
+<li>Keyword search finds exact words; <strong>semantic search</strong> finds related meaning. Combining both often works best.</li>
+<li>Always <strong>measure</strong> a search engine with a test set of queries, not by trying a few examples.</li>
+</ul>
+
+<h4>Exercises (all in the notebook)</h4>
+<ol>
+<li><strong>Load your documents.</strong> At least 6,000 words in plain text files.</li>
+<li><strong>Chunk them.</strong> Write <code>chunk_text()</code> to pack whole paragraphs into chunks of limited size.</li>
+<li><strong>Embed.</strong> Load a Hugging Face sentence-embedding model and write <code>embed()</code>. Embed 100 or more chunks.</li>
+<li><strong>Cosine similarity.</strong> Write <code>cosine_scores()</code> yourself.</li>
+<li><strong>Top matches.</strong> Write <code>top_k()</code>, then try the search on questions of your own.</li>
+<li><strong>Measure.</strong> Write 20 test queries with gold phrases and write <code>evaluate_search()</code>. Target: at least 15 of 20 in the top 3.</li>
+<li><strong>Compare chunk sizes fairly</strong> (with the same text budget) and choose the best one.</li>
+<li><strong>Stretch:</strong> add a re-ranking step and measure the gain.</li>
+</ol>
+
+<h4>Hint ladder</h4>
+<ol>
+<li>The NumPy and sentence-transformers documentation, and a web search.</li>
+<li>The written hints under each step in the notebook.</li>
+<li>If a self-check fails, read its message: each one names the most likely mistake.</li>
+<li>Reference solution: open <a href="https://panchadk.github.io/AIStartup/module6_solution.html" target="_blank" rel="noopener">the solution page</a> only after your own honest attempt.</li>
+</ol>
+
+<h4>Before you submit</h4>
+<ul>
+<li>Every self-check cell in the notebook passes, including the final 15-of-20 test.</li>
+<li>Take the Module 6 quiz (pass mark 4 of 5).</li>
+<li>Push the notebook and a three-line reflection (what you searched, what surprised you, your best chunk size and hit count) to <code>module-06</code> in your portfolio repo. Do not push private documents. Then submit the link in the assignment below.</li>
+</ul>

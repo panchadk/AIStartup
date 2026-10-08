@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Module 6: Reference solution</title>
+<style>
+  :root { --navy: #1F3864; --ink: #222222; --bg: #FFFFFF; --code-bg: #F3F6FA; --warn-bg: #FFF4E5; --warn-edge: #E08A00; }
+  body { font-family: Arial, Helvetica, sans-serif; max-width: 860px; margin: 0 auto; padding: 24px; line-height: 1.6; color: var(--ink); background: var(--bg); }
+  h3 { color: var(--navy); border-bottom: 3px solid var(--navy); padding-bottom: 6px; }
+  h4 { color: var(--navy); margin-top: 28px; }
+  strong { color: var(--navy); }
+  code { font-family: Consolas, "Courier New", monospace; background: var(--code-bg); padding: 1px 4px; border-radius: 3px; }
+  pre { background: var(--code-bg); border-left: 4px solid var(--navy); padding: 14px; overflow-x: auto; border-radius: 4px; }
+  pre code { background: none; padding: 0; }
+  .banner { background: var(--warn-bg); border-left: 4px solid var(--warn-edge); padding: 12px 16px; border-radius: 4px; margin: 16px 0; }
+  @media (prefers-color-scheme: dark) {
+    :root { --navy: #8FB4F0; --ink: #E6E6E6; --bg: #14181F; --code-bg: #1E2530; --warn-bg: #3A2C12; --warn-edge: #E0A040; }
+  }
+</style>
+</head>
+<body>
+<h3>Module 6: Reference solution</h3>
+<div class="banner"><strong>Try it yourself first.</strong> Open this page only after your own honest attempt. If a self-check is failing, read its message again and compare one function at a time. Matching line for line is not required: if every self-check passes, your solution is correct.</div>
+<h4>Step 2: chunk_text</h4>
+<p>Pack whole paragraphs into a chunk until the next one would not fit. A paragraph that is longer than the limit on its own is first preceded by closing the chunk in progress, then cut by words. Keeping paragraphs together matters: a passage cut in half makes both halves harder to find.</p>
+<pre><code>def chunk_text(text, max_words=60):
+    chunks, current, count = [], [], 0
+    for para in [p.strip() for p in text.split(&quot;\n\n&quot;) if p.strip()]:
+        words = para.split()
+        if len(words) &gt; max_words:
+            if current:
+                chunks.append(&quot;\n\n&quot;.join(current)); current, count = [], 0
+            for i in range(0, len(words), max_words):
+                chunks.append(&quot; &quot;.join(words[i:i + max_words]))
+            continue
+        if count + len(words) &gt; max_words and current:
+            chunks.append(&quot;\n\n&quot;.join(current)); current, count = [], 0
+        current.append(para); count += len(words)
+    if current:
+        chunks.append(&quot;\n\n&quot;.join(current))
+    return chunks</code></pre>
+<h4>Step 3: embed</h4>
+<p>One call to the model. <code>normalize_embeddings=True</code> returns unit-length vectors, which is a good habit even though this particular model already normalizes.</p>
+<pre><code>def embed(texts):
+    return model.encode(texts, normalize_embeddings=True, batch_size=64, show_progress_bar=False)</code></pre>
+<h4>Step 4: cosine_scores</h4>
+<p>The dot product of the query with every row, divided by the product of the lengths. The tiny number 1e-12 avoids dividing by zero for an all-zero vector. Because it divides by the lengths, the result does not change if you scale a vector, which is what makes it a measure of direction.</p>
+<pre><code>def cosine_scores(query_vec, matrix):
+    dots = matrix @ query_vec
+    norms = np.linalg.norm(matrix, axis=1) * np.linalg.norm(query_vec)
+    return dots / (norms + 1e-12)</code></pre>
+<h4>Step 5: top_k</h4>
+<p><code>np.argsort</code> sorts from lowest to highest, so reverse it with <code>[::-1]</code> and take the first k. Slicing with <code>[:k]</code> already handles a k that is larger than the number of rows.</p>
+<pre><code>def top_k(query_vec, matrix, k=3):
+    scores = cosine_scores(query_vec, matrix)
+    order = np.argsort(scores)[::-1][:k]
+    return order, scores[order]</code></pre>
+<h4>Step 6: evaluate_search</h4>
+<p>For each query, retrieve the top k chunks, join their text, and see whether any gold phrase appears. Lowercase both sides so capital letters do not matter. A query counts as a hit if <em>any</em> gold phrase is found.</p>
+<pre><code>def evaluate_search(eval_set, texts, embs, embed_fn, k=3):
+    hits, missed = 0, []
+    for item in eval_set:
+        idx, _ = top_k(embed_fn([item[&quot;query&quot;]])[0], embs, k)
+        retrieved = &quot; &quot;.join(texts[i] for i in idx).lower()
+        if any(g.lower() in retrieved for g in item[&quot;gold&quot;]):
+            hits += 1
+        else:
+            missed.append(item[&quot;query&quot;])
+    return hits, missed</code></pre>
+<h4>Step 7: the chunk size comparison</h4>
+<p>Build an index per size, set <code>k</code> from the text budget so every size retrieves about the same amount of text, and store the three numbers. Then pick the size with the most hits, preferring the smaller size when tied.</p>
+<pre><code>size_results = {}
+for size in [30, 60, 120, 300]:
+    texts, sources, embs = build_index(size)
+    k = max(1, round(360 / size))
+    hits, _ = evaluate_search(eval_set, texts, embs, embed, k=k)
+    size_results[size] = {&quot;chunks&quot;: len(texts), &quot;k&quot;: k, &quot;hits&quot;: hits}
+
+BEST_WORDS = max(size_results, key=lambda s: (size_results[s][&quot;hits&quot;], -s))</code></pre>
+<h4>If you are stuck below 15 of 20</h4>
+<p>Print the missed queries and look at each one with <code>show(query)</code>. Almost every miss has one of these causes:</p>
+<ol>
+<li><strong>The gold phrase is too narrow.</strong> The search returned a perfectly good passage that simply does not contain your phrase. Widen the gold list, for example by adding a second name that the answer may use.</li>
+<li><strong>The answer is not in your documents.</strong> Replace the query, or add the missing content.</li>
+<li><strong>The chunk is the wrong size.</strong> Compare sizes at the same text budget, as in Step 7. If your paragraphs are very long, smaller chunk sizes help; if they are very short and fragmentary, larger sizes help.</li>
+<li><strong>Your query shares no words with the answer and the topic is rare.</strong> Embedding models know common language better than rare jargon. Try rephrasing the query the way a user would, or add the jargon term to the passage text.</li>
+<li><strong>The paragraph breaks are missing.</strong> If your files are one long block of text, the chunker has no paragraphs to keep together and cuts every N words. Add blank lines between paragraphs.</li>
+</ol>
+
+<h4>Sample answers to the written questions</h4>
+<ul>
+<li><strong>Rephrasing experiment:</strong> a good answer reports a question that worked even though it shared no words with the passage (semantic search at work), and one that failed, with a guess about why (rare jargon, a very general question, or the answer being split across passages).</li>
+<li><strong>Which chunk size was best and why:</strong> smaller chunks tend to win at an equal text budget on documents made of short, separate passages, because a focused chunk matches a focused question. Larger chunks help when the answer needs surrounding context. With longer paragraphs, the best size usually moves up. The exact winner depends on your documents, so say what <em>you</em> measured.</li>
+<li><strong>Stretch, re-ranking:</strong> a cross-encoder usually improves the order within the top candidates, which helps most when the right passage is retrieved but not in the top 3. It costs more time per query, because it must read each candidate together with the question.</li>
+</ul>
+
+<h4>Common mistakes and what they look like</h4>
+<ul>
+<li><strong>Test queries that copy words from the document:</strong> the score is high, but it measures keyword matching, not meaning. Write queries the way a real user would ask.</li>
+<li><strong>Gold phrases that also appear in the query:</strong> the self-check rejects these, because they make the test trivial.</li>
+<li><strong>Comparing chunk sizes with the same k:</strong> bigger chunks return more text and look better by luck. Use an equal text budget.</li>
+<li><strong>Sorting scores the wrong way:</strong> results come back worst first. <code>np.argsort</code> sorts ascending.</li>
+<li><strong>Dot product instead of cosine for unnormalized vectors:</strong> long vectors dominate the ranking regardless of meaning.</li>
+<li><strong>Forgetting to re-embed after changing the chunk size:</strong> the chunk list and the embedding matrix no longer match, so results point at the wrong text. Use <code>build_index</code>, which does both together.</li>
+<li><strong>Judging by a few handpicked queries:</strong> it feels fine and hides failures. Use the 20-query test set.</li>
+</ul>
+
+<h4>What to do next</h4>
+<ul>
+<li>Complete the three-line reflection and push your notebook to your portfolio repo.</li>
+<li>Take the Module 6 quiz in Moodle.</li>
+<li>Keep <code>index_embeddings.npy</code> and <code>index_chunks.json</code>. In Module 7 you will give the retrieved passages to a language model so that it can answer questions from your documents, with citations.</li>
+</ul>
+
+</body>
+</html>
