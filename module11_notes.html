@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Module 11 lecture notes: Capstone, build</title>
+<style>
+  :root { --navy:#1F3864;--ink:#222222;--bg:#FFFFFF;--code-bg:#F3F6FA;--hl-bg:#FFF4E5;--accent:#D9730D;--muted:#8A94A6; --muted-text:#555555; --good:#2E7D32; }
+  body { font-family: Arial, Helvetica, sans-serif; max-width: 860px; margin: 0 auto; padding: 24px; line-height: 1.65; color: var(--ink); background: var(--bg); }
+  h1 { color: var(--navy); margin-bottom: 4px; }
+  h2 { color: var(--navy); border-bottom: 3px solid var(--navy); padding-bottom: 6px; margin-top: 40px; }
+  h3 { color: var(--navy); margin-top: 26px; }
+  strong { color: var(--navy); }
+  a { color: var(--navy); }
+  .meta { color: var(--muted-text); margin-top: 0; }
+  code { font-family: Consolas, "Courier New", monospace; background: var(--code-bg); padding: 1px 4px; border-radius: 3px; }
+  pre { background: var(--code-bg); border-left: 4px solid var(--navy); padding: 14px; overflow-x: auto; border-radius: 4px; }
+  pre code { background: none; padding: 0; }
+  .toc { background: var(--code-bg); border-radius: 6px; padding: 12px 20px; }
+  .toc ol { margin: 6px 0; }
+  .note { background: var(--hl-bg); border-left: 4px solid var(--accent); padding: 12px 16px; border-radius: 4px; margin: 18px 0; }
+  .key { background: var(--code-bg); border-left: 4px solid var(--navy); padding: 12px 16px; border-radius: 4px; margin: 18px 0; }
+  figure { margin: 26px 0; }
+  figcaption { font-size: .9em; color: var(--muted-text); text-align: center; margin-top: 6px; }
+  svg.fig { width: 100%; height: auto; max-width: 760px; display: block; margin: 0 auto; }
+  table { border-collapse: collapse; width: 100%; margin: 14px 0; }
+  th, td { border: 1px solid var(--muted); padding: 7px 10px; text-align: left; vertical-align: top; }
+  th { background: var(--code-bg); color: var(--navy); }
+  details { background: var(--code-bg); border-radius: 6px; padding: 8px 14px; margin: 10px 0; }
+  summary { cursor: pointer; font-weight: bold; color: var(--navy); }
+  .nav { display: flex; justify-content: space-between; gap: 12px; margin-top: 40px; padding-top: 14px; border-top: 1px solid var(--muted); flex-wrap: wrap; }
+
+svg .box{fill:var(--code-bg);stroke:var(--navy);stroke-width:2}
+svg .box2{fill:var(--bg);stroke:var(--navy);stroke-width:2}
+svg .hl{fill:var(--hl-bg);stroke:var(--accent);stroke-width:2}
+svg .t{fill:var(--ink);font-family:Arial,Helvetica,sans-serif;font-size:14px}
+svg .tb{font-weight:bold}
+svg .ts{font-size:12px}
+svg .tl{font-size:16px}
+svg .tn{fill:var(--navy)}
+svg .ta{fill:var(--accent)}
+svg .tm{fill:var(--muted)}
+svg .ln{stroke:var(--navy);stroke-width:2.5;fill:none}
+svg .la{stroke:var(--accent);stroke-width:2.5;fill:none}
+svg .lg{stroke:var(--muted);stroke-width:1;fill:none;opacity:.55}
+svg .ax{stroke:var(--ink);stroke-width:1.5;fill:none}
+svg .fw{stroke:var(--navy);stroke-width:2.5;fill:none}
+svg .bw{stroke:var(--accent);stroke-width:2.5;fill:none}
+svg .dash{stroke-dasharray:6 4}
+svg .mN{fill:var(--navy)}
+svg .mA{fill:var(--accent)}
+svg .dotN{fill:var(--navy)}
+svg .dotA{fill:var(--accent)}
+svg .sqN{fill:var(--navy)}
+svg .sqA{fill:var(--accent)}
+svg .sqM{fill:var(--muted)}
+svg .tbg{fill:var(--bg);font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:bold}
+svg .node{fill:var(--bg);stroke:var(--navy);stroke-width:2}
+
+  @media (prefers-color-scheme: dark) {
+    :root { --navy:#8FB4F0;--ink:#E6E6E6;--bg:#14181F;--code-bg:#1E2530;--hl-bg:#3A2C12;--accent:#F0A040;--muted:#6B778C; --muted-text:#B5BCC8; --good:#66BB6A; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Module 11: Capstone, build</h1>
+<p class="meta">Lecture notes with diagrams. Reading time: about 25 minutes. Read once with your team, then open the workbook. Come back here when you are stuck on scope, planning, or an evaluation number you do not trust.</p>
+
+<div class="toc"><strong>In these notes</strong>
+<ol>
+<li><a href="#big">The big picture</a></li>
+<li><a href="#scope">Choose and scope a project you can finish</a></li>
+<li><a href="#thin">Build the thin slice first</a></li>
+<li><a href="#buy">Build or buy?</a></li>
+<li><a href="#team">Working as a team</a></li>
+<li><a href="#eval">Evaluating honestly</a></li>
+<li><a href="#users">Test with real users early</a></li>
+<li><a href="#terms">Key terms</a>, <a href="#pitfalls">pitfalls</a>, and <a href="#check">check yourself</a></li>
+</ol></div>
+
+<h2 id="big">1. The big picture</h2>
+<p>You have now used every tool of an applied AI team: pretrained vision models, embeddings and search, retrieval-augmented chatbots, fine-tuning, careful data and evaluation, and deployment. The capstone asks you to use them <strong>together, on a problem you chose</strong>.</p>
+<p>The hard part is no longer any single technique. It is <strong>judgment</strong>: what to build, in what order, what to leave out, and how to tell whether it works. This module is practice in that judgment, and the workbook turns each decision into something you can check.</p>
+
+<h2 id="scope">2. Choose and scope a project you can finish</h2>
+<p>A good capstone has <strong>one user, one painful problem, data you can really get, and a number that means "good enough"</strong>. You wrote this in Module 10. Now decide what is <em>in</em>.</p>
+<figure>
+<svg class="fig" viewBox="0 0 760 285" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Scope buckets: must have, nice to have and out of scope, and a calendar bar showing must-have work plus a buffer"><defs><marker id="aN112" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA112" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><rect x="10" y="14" width="240" height="190" rx="8" class="hl"/><text x="130" y="40" class="t tb" text-anchor="middle" >MUST HAVE</text><text x="130" y="58" class="t ts ta" text-anchor="middle" >3 to 6 items</text><text x="24" y="90" class="t ts" text-anchor="start" >- trained classifier + saved model</text><text x="24" y="116" class="t ts" text-anchor="start" >- pipeline: input in, answer out</text><text x="24" y="142" class="t ts" text-anchor="start" >- evaluation vs a baseline</text><text x="24" y="168" class="t ts" text-anchor="start" >- labeling guide</text><rect x="260" y="14" width="240" height="190" rx="8" class="box"/><text x="380" y="40" class="t tb" text-anchor="middle" >NICE TO HAVE</text><text x="380" y="58" class="t ts ta" text-anchor="middle" >only if time is left</text><text x="274" y="90" class="t ts" text-anchor="start" >- web page to try it</text><text x="274" y="116" class="t ts" text-anchor="start" >- per-channel breakdown</text><rect x="510" y="14" width="240" height="190" rx="8" class="box2"/><text x="630" y="40" class="t tb" text-anchor="middle" >OUT OF SCOPE</text><text x="630" y="58" class="t ts ta" text-anchor="middle" >written down on purpose</text><text x="524" y="90" class="t ts" text-anchor="start" >- auto-replying to customers</text><text x="524" y="116" class="t ts" text-anchor="start" >- other languages</text><text x="380" y="232" class="t tb" text-anchor="middle" >Must-have work + a 20% buffer has to fit in the calendar. If it does not, cut scope, never the buffer.</text><rect x="60" y="246" width="640" height="22" rx="4" class="box2"/><rect x="60" y="246" width="430" height="22" rx="4" class="sqA"/><rect x="490" y="246" width="86" height="22" class="sqM" style="opacity:.7"/><text x="275" y="262" class="tbg" text-anchor="middle" >must-have work</text><text x="533" y="262" class="t ts" text-anchor="middle" >buffer</text><text x="640" y="262" class="t ts tm" text-anchor="middle" >spare</text></svg>
+<figcaption>Scope in three buckets. The must-have list is short on purpose, and the out-of-scope list is what protects it.</figcaption>
+</figure>
+<ul>
+<li><strong>Must have (3 to 6 items):</strong> without these there is no product. If everything is a must, nothing is.</li>
+<li><strong>Nice to have:</strong> only if time is left, and you decide <em>in advance</em> what you drop first.</li>
+<li><strong>Out of scope:</strong> things you will <strong>not</strong> do, written down. It is easy to drift into them.</li>
+</ul>
+<p>Then check that it <strong>fits the calendar</strong>. Add up the days of the must-have work, share them among the team, and add a <strong>20% buffer</strong>, because plans always run late. If it does not fit, <strong>cut scope</strong>. Cutting the buffer is the one thing that never works.</p>
+<pre><code>per person       = must-have days / team size
+needed with buffer = per person x 1.2
+fits             = needed with buffer &lt;= days available</code></pre>
+
+<h2 id="thin">3. Build the thin slice first</h2>
+<figure>
+<svg class="fig" viewBox="0 0 760 270" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Building layer by layer delivers nothing until the end, while a thin slice through every layer works from the first week"><defs><marker id="aN111" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA111" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><text x="210" y="22" class="t tb tn" text-anchor="middle" >Layer by layer: nothing works until the end</text><text x="108" y="46" class="t ts tm" text-anchor="middle" >week 1</text><rect x="70" y="58" width="76" height="26" rx="3" class="box2"/><rect x="70" y="58" width="76" height="26" rx="3" class="sqA"/><rect x="70" y="92" width="76" height="26" rx="3" class="box2"/><rect x="70" y="126" width="76" height="26" rx="3" class="box2"/><rect x="70" y="160" width="76" height="26" rx="3" class="box2"/><text x="200" y="46" class="t ts tm" text-anchor="middle" >week 2</text><rect x="162" y="58" width="76" height="26" rx="3" class="box2"/><rect x="162" y="58" width="76" height="26" rx="3" class="sqA"/><rect x="162" y="92" width="76" height="26" rx="3" class="box2"/><rect x="162" y="92" width="76" height="26" rx="3" class="sqA"/><rect x="162" y="126" width="76" height="26" rx="3" class="box2"/><rect x="162" y="160" width="76" height="26" rx="3" class="box2"/><text x="292" y="46" class="t ts tm" text-anchor="middle" >week 3</text><rect x="254" y="58" width="76" height="26" rx="3" class="box2"/><rect x="254" y="58" width="76" height="26" rx="3" class="sqA"/><rect x="254" y="92" width="76" height="26" rx="3" class="box2"/><rect x="254" y="92" width="76" height="26" rx="3" class="sqA"/><rect x="254" y="126" width="76" height="26" rx="3" class="box2"/><rect x="254" y="126" width="76" height="26" rx="3" class="sqA"/><rect x="254" y="160" width="76" height="26" rx="3" class="box2"/><rect x="254" y="160" width="76" height="26" rx="3" class="sqA"/><text x="570" y="22" class="t tb tn" text-anchor="middle" >Thin slice first: it works from week 1</text><text x="468" y="46" class="t ts tm" text-anchor="middle" >week 1</text><rect x="430" y="58" width="76" height="26" rx="3" class="box2"/><rect x="430" y="58" width="23" height="26" rx="3" class="sqA"/><rect x="430" y="92" width="76" height="26" rx="3" class="box2"/><rect x="430" y="92" width="23" height="26" rx="3" class="sqA"/><rect x="430" y="126" width="76" height="26" rx="3" class="box2"/><rect x="430" y="126" width="23" height="26" rx="3" class="sqA"/><rect x="430" y="160" width="76" height="26" rx="3" class="box2"/><rect x="430" y="160" width="23" height="26" rx="3" class="sqA"/><text x="560" y="46" class="t ts tm" text-anchor="middle" >week 2</text><rect x="522" y="58" width="76" height="26" rx="3" class="box2"/><rect x="522" y="58" width="46" height="26" rx="3" class="sqA"/><rect x="522" y="92" width="76" height="26" rx="3" class="box2"/><rect x="522" y="92" width="46" height="26" rx="3" class="sqA"/><rect x="522" y="126" width="76" height="26" rx="3" class="box2"/><rect x="522" y="126" width="46" height="26" rx="3" class="sqA"/><rect x="522" y="160" width="76" height="26" rx="3" class="box2"/><rect x="522" y="160" width="46" height="26" rx="3" class="sqA"/><text x="652" y="46" class="t ts tm" text-anchor="middle" >week 3</text><rect x="614" y="58" width="76" height="26" rx="3" class="box2"/><rect x="614" y="58" width="76" height="26" rx="3" class="sqA"/><rect x="614" y="92" width="76" height="26" rx="3" class="box2"/><rect x="614" y="92" width="76" height="26" rx="3" class="sqA"/><rect x="614" y="126" width="76" height="26" rx="3" class="box2"/><rect x="614" y="126" width="76" height="26" rx="3" class="sqA"/><rect x="614" y="160" width="76" height="26" rx="3" class="box2"/><rect x="614" y="160" width="76" height="26" rx="3" class="sqA"/><text x="64" y="76" class="t ts" text-anchor="end" >Data</text><text x="424" y="76" class="t ts" text-anchor="end" >Data</text><text x="64" y="110" class="t ts" text-anchor="end" >Model</text><text x="424" y="110" class="t ts" text-anchor="end" >Model</text><text x="64" y="144" class="t ts" text-anchor="end" >API</text><text x="424" y="144" class="t ts" text-anchor="end" >API</text><text x="64" y="178" class="t ts" text-anchor="end" >Web page</text><text x="424" y="178" class="t ts" text-anchor="end" >Web page</text><text x="190" y="214" class="t ts ta" text-anchor="middle" >Surprises appear in week 3, when there is no time left.</text><text x="550" y="214" class="t ts tn" text-anchor="middle" >Surprises appear in week 1, when they are cheap to fix.</text><text x="380" y="250" class="t tb" text-anchor="middle" >Build the thinnest version that goes from a real input to a real output, then thicken every layer.</text></svg>
+<figcaption>The same four layers, two orders. The thin slice is rough everywhere in week 1, so that the surprises show up when there is time to fix them.</figcaption>
+</figure>
+<p>The natural plan is to finish the data, then the model, then the API, then the page. The trouble is that nothing works end to end until the last week, and that is when you learn that the model's output does not match what the API expects, or that real inputs crash the pipeline.</p>
+<p>The better plan is the <strong>thinnest end-to-end version</strong>: a crude version of <em>every</em> layer that takes a <strong>real input</strong> and produces a <strong>real output</strong>. Then improve the weakest layer first. The rule: <strong>make it work, then make it good</strong>.</p>
+<ul>
+<li>Test it with <strong>real inputs</strong> (as users really send them), not examples you made easy.</li>
+<li>A <strong>smoke test</strong> sends every real input through the whole pipeline and reports crashes and time. A crash on day 3 is a gift.</li>
+<li>Write down <strong>how to run it</strong> and hand the instructions to someone outside your team, without helping. Where they get stuck is a bug in your instructions.</li>
+</ul>
+
+<h2 id="buy">4. Build or buy?</h2>
+<figure>
+<svg class="fig" viewBox="0 0 760 310" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Build versus buy ladder from using a pretrained model as it is to training your own from scratch"><defs><marker id="aN114" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA114" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><text x="380" y="20" class="t tb tn" text-anchor="middle" >Move down the ladder only when your measurement says you must</text><rect x="10" y="44" width="420" height="46" rx="8" class="box2"/><text x="22" y="72" class="t ts tb" text-anchor="start" >Use a pretrained model or API as it is</text><rect x="450" y="56" width="40" height="22" rx="3" class="sqA" style="opacity:0.35"/><text x="498" y="72" class="t ts" text-anchor="start" >hours</text><rect x="10" y="102" width="420" height="46" rx="8" class="box"/><text x="22" y="130" class="t ts tb" text-anchor="start" >Add prompting or retrieval (Modules 6 and 7)</text><rect x="450" y="114" width="100" height="22" rx="3" class="sqA" style="opacity:0.55"/><text x="558" y="130" class="t ts" text-anchor="start" >days</text><rect x="10" y="160" width="420" height="46" rx="8" class="box"/><text x="22" y="188" class="t ts tb" text-anchor="start" >Fine-tune a pretrained model (Modules 5 and 8)</text><rect x="450" y="172" width="170" height="22" rx="3" class="sqA" style="opacity:0.75"/><text x="628" y="188" class="t ts" text-anchor="start" >a week</text><rect x="10" y="218" width="420" height="46" rx="8" class="hl"/><text x="22" y="246" class="t ts tb" text-anchor="start" >Train your own model from scratch</text><rect x="450" y="230" width="240" height="22" rx="3" class="sqA" style="opacity:0.9500000000000001"/><text x="698" y="246" class="t ts" text-anchor="start" >weeks</text><text x="560" y="36" class="t ts tm" text-anchor="middle" >effort and cost</text><text x="380" y="290" class="t tb" text-anchor="middle" >Most startups should live on the first two rungs. Ask: what would the simplest rung have to fail at?</text></svg>
+<figcaption>Each rung costs more effort. Start at the top and move down only when a measurement tells you to.</figcaption>
+</figure>
+<p>For each part of your product, ask: <strong>what is the simplest thing that could work?</strong> A pretrained model or a hosted API is the cheapest start. Prompting and retrieval come next (Modules 6 and 7). Fine-tuning (Modules 5 and 8) comes when you need a fixed format, a lower cost per request, or a skill the base model lacks. Training from scratch is rarely right for a startup.</p>
+<p>Your <strong>evaluation tells you when to move down</strong>: if the simple option already meets your target, stop. If it falls short, look at the failures, and choose the next rung for a reason you can name.</p>
+
+<h2 id="team">5. Working as a team</h2>
+<p>The usual failure of a team project is not a weak person. It is parts that do not fit when joined. Three habits prevent it:</p>
+<figure>
+<svg class="fig" viewBox="0 0 760 305" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Interface contracts between components: input, output and owner, and what goes wrong without them"><defs><marker id="aN113" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA113" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><rect x="10" y="40" width="235" height="110" rx="8" class="box"/><text x="127" y="64" class="t tb tn" text-anchor="middle" >preprocess</text><text x="24" y="92" class="t ts" text-anchor="start" >in:  raw text</text><text x="24" y="112" class="t ts" text-anchor="start" >out: clean text</text><text x="24" y="136" class="t ts tm" text-anchor="start" >owner: Ana</text><rect x="260" y="40" width="235" height="110" rx="8" class="box"/><text x="377" y="64" class="t tb tn" text-anchor="middle" >classifier</text><text x="274" y="92" class="t ts" text-anchor="start" >in:  clean text</text><text x="274" y="112" class="t ts" text-anchor="start" >out: label + score</text><text x="274" y="136" class="t ts tm" text-anchor="start" >owner: Ben</text><rect x="510" y="40" width="235" height="110" rx="8" class="box"/><text x="627" y="64" class="t tb tn" text-anchor="middle" >api</text><text x="524" y="92" class="t ts" text-anchor="start" >in:  label + score</text><text x="524" y="112" class="t ts" text-anchor="start" >out: JSON</text><text x="524" y="136" class="t ts tm" text-anchor="start" >owner: Ben</text><line x1="246" y1="95" x2="258" y2="95" class="fw" marker-end="url(#aN113)"/><line x1="496" y1="95" x2="508" y2="95" class="fw" marker-end="url(#aN113)"/><text x="380" y="20" class="t tb tn" text-anchor="middle" >Agree each part's input and output, in plain words, with one owner</text><rect x="10" y="190" width="360" height="96" rx="8" class="hl"/><text x="190" y="214" class="t tb ta" text-anchor="middle" >What goes wrong without a contract</text><text x="24" y="238" class="t ts" text-anchor="start" >classifier outputs an embedding,</text><text x="24" y="256" class="t ts" text-anchor="start" >but the api expects a label and a score</text><text x="24" y="274" class="t ts ta" text-anchor="start" >-&gt; found on demo day, by everyone at once</text><rect x="390" y="190" width="360" height="96" rx="8" class="box2"/><text x="570" y="214" class="t tb tn" text-anchor="middle" >check_pipeline() finds it in a second</text><text x="404" y="238" class="t ts" text-anchor="start" >classifier outputs 'embedding'</text><text x="404" y="256" class="t ts" text-anchor="start" >but api expects 'label and score'</text><text x="404" y="274" class="t ts tn" text-anchor="start" >-&gt; fixed on day 1, between two people</text></svg>
+<figcaption>A contract for each part: what comes in, what goes out, who owns it.</figcaption>
+</figure>
+<ol>
+<li><strong>Agree interfaces first.</strong> For every component, write its input type, its output type, and one owner. The output of each part must equal the input of the next. A tiny function can check this.</li>
+<li><strong>Split work by component</strong>, not by task type, so that each person owns something end to end and can test it alone.</li>
+<li><strong>Short daily check-ins and Git branches.</strong> Ten minutes a day: what I did, what I will do, what blocks me. Merge small, merge often.</li>
+</ol>
+<p>Working alone? You still need the contracts: they are how you keep your own parts from drifting apart.</p>
+
+<h2 id="eval">6. Evaluating honestly</h2>
+<p>You built an evaluation harness in Module 9. Reuse its principles: a <strong>fixed evaluation set</strong> that the model has never seen, a <strong>fingerprint</strong> to prove it did not change, and a <strong>baseline</strong> beside your model.</p>
+<figure>
+<svg class="fig" viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A model score of 98 percent against a naive baseline of 46 percent and a target of 90 percent"><defs><marker id="aN115" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA115" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><text x="380" y="20" class="t tb tn" text-anchor="middle" >A number only means something next to a baseline and a target</text><line x1="140" y1="230" x2="640" y2="230" class="ax"/><rect x="210" y="151.8" width="100" height="78.2" rx="4" class="sqM"/><text x="260" y="143.8" class="t tb" text-anchor="middle" >46%</text><text x="260" y="250" class="t ts tb" text-anchor="middle" >naive baseline</text><rect x="410" y="63.4" width="100" height="166.6" rx="4" class="sqN"/><text x="460" y="55.400000000000006" class="t tb" text-anchor="middle" >98%</text><text x="460" y="250" class="t ts tb" text-anchor="middle" >your model</text><line x1="140" y1="77.0" x2="640" y2="77.0" class="la dash"/><text x="640" y="71.0" class="t ts ta" text-anchor="end" >target 90%</text><path d="M335,151.8 L335,63.4" class="la"/><text x="352" y="150" class="t ts ta" text-anchor="start" >the gap is</text><text x="352" y="166" class="t ts ta" text-anchor="start" >the value you add</text><text x="380" y="286" class="t ts" text-anchor="middle" >If the model barely beats the baseline, you learned that cheaply. If it misses the target, the target or the model is wrong.</text></svg>
+<figcaption>The gap between baseline and model is the value you add. The target line is the promise you made.</figcaption>
+</figure>
+<ul>
+<li><strong>The baseline</strong> is the simple approach a smart person would try first (a keyword rule, the majority class, plain search). If you do not beat it by a clear margin, either the problem is easy or your model is not adding much, and you have learned that cheaply.</li>
+<li><strong>The target</strong> comes from the user's need, <em>before</em> you look at results. Do not move it to match what you achieved.</li>
+<li><strong>A fair evaluation set</strong> looks like real use. If 12% of real tickets are urgent but your evaluation set is half urgent, say so, and know what that does to precision.</li>
+<li><strong>Read the failures.</strong> The score says how much fails; the failures say why. The biggest pattern is your next step.</li>
+</ul>
+
+<h2 id="users">7. Test with real users early</h2>
+<p>Your own sense of how usable your product is cannot be trusted: you know too much. Put it in front of people who have never seen it, give them a real task, and <strong>watch without helping</strong>.</p>
+<figure>
+<svg class="fig" viewBox="0 0 760 318" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Five test users find about 85 percent of usability problems, with diminishing returns after that"><defs><marker id="aN116" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA116" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><line x1="80" y1="240" x2="710" y2="240" class="ax"/><line x1="80" y1="240" x2="80" y2="40" class="ax"/><line x1="80" y1="192.5" x2="710" y2="192.5" class="lg"/><text x="72" y="196.5" class="t ts tm" text-anchor="end" >25%</text><line x1="80" y1="145.0" x2="710" y2="145.0" class="lg"/><text x="72" y="149.0" class="t ts tm" text-anchor="end" >50%</text><line x1="80" y1="97.5" x2="710" y2="97.5" class="lg"/><text x="72" y="101.5" class="t ts tm" text-anchor="end" >75%</text><line x1="80" y1="50.0" x2="710" y2="50.0" class="lg"/><text x="72" y="54.0" class="t ts tm" text-anchor="end" >100%</text><path d="M90.0,181.1 L165.0,140.5 L240.0,112.4 L315.0,93.1 L390.0,79.7 L465.0,70.5 L540.0,64.1 L615.0,59.8" class="ln"/><circle cx="90.0" cy="181.1" r="5" class="dotN"/><circle cx="165.0" cy="140.5" r="5" class="dotN"/><circle cx="240.0" cy="112.4" r="5" class="dotN"/><circle cx="315.0" cy="93.1" r="5" class="dotN"/><circle cx="390.0" cy="79.7" r="5" class="dotA"/><circle cx="465.0" cy="70.5" r="5" class="dotN"/><circle cx="540.0" cy="64.1" r="5" class="dotN"/><circle cx="615.0" cy="59.8" r="5" class="dotN"/><text x="90" y="258" class="t ts" text-anchor="middle" >1</text><text x="165" y="258" class="t ts" text-anchor="middle" >2</text><text x="240" y="258" class="t ts" text-anchor="middle" >3</text><text x="315" y="258" class="t ts" text-anchor="middle" >4</text><text x="390" y="258" class="t ts" text-anchor="middle" >5</text><text x="465" y="258" class="t ts" text-anchor="middle" >6</text><text x="540" y="258" class="t ts" text-anchor="middle" >7</text><text x="615" y="258" class="t ts" text-anchor="middle" >8</text><text x="390" y="280" class="t ts tm" text-anchor="middle" >number of test users</text><text x="400" y="102.5" class="t ts tb ta" text-anchor="start" >5 users: about 85%</text><text x="380" y="20" class="t tb tn" text-anchor="middle" >Share of usability problems found (a classic rule of thumb)</text><text x="380" y="300" class="t ts tb" text-anchor="middle" >Five users find most problems. After that, fix them and test again with new people.</text></svg>
+<figcaption>A rule of thumb: five users uncover most problems. More users of the same kind mostly repeat what you already found.</figcaption>
+</figure>
+<ul>
+<li>Record for each person: did they <strong>finish the task</strong>, how <strong>satisfied</strong> were they, and what <strong>issues</strong> did they hit.</li>
+<li>Count the issues. The one that happens to most people comes first.</li>
+<li>Fix what you found, then test again with <strong>new</strong> people: three small rounds beat one big one.</li>
+</ul>
+
+<h2 id="terms">8. Key terms</h2>
+<table>
+<tr><th>Term</th><th>Plain meaning</th></tr>
+<tr><td>Scope</td><td>The list of what is in and out of your project</td></tr>
+<tr><td>Must have / nice to have</td><td>Essential work, versus work for if there is time</td></tr>
+<tr><td>Buffer</td><td>Extra time in a plan, because plans run late</td></tr>
+<tr><td>Thin slice</td><td>A crude version of every layer that works end to end</td></tr>
+<tr><td>Smoke test</td><td>A quick run of real inputs through everything, to see if it breaks</td></tr>
+<tr><td>Interface contract</td><td>An agreement on what goes into and out of each component</td></tr>
+<tr><td>Baseline</td><td>The simple approach your model must beat</td></tr>
+<tr><td>Target</td><td>The number that means "good enough" for the user</td></tr>
+</table>
+
+<h2 id="pitfalls">9. Common pitfalls</h2>
+<ul>
+<li>A scope so big that the plan can never fit.</li>
+<li>Perfecting one layer while the others do not exist.</li>
+<li>Interfaces that live only in people's heads.</li>
+<li>Test inputs that are easier than real ones.</li>
+<li>Reporting a score with no baseline and no target.</li>
+<li>Moving the target after seeing the result.</li>
+<li>Showing the product to no one until the last day.</li>
+</ul>
+
+<h2 id="check">10. Check yourself</h2>
+<p>Try each question first, then open the answer.</p>
+<details><summary>Question 1: Your must-have work totals 18 days, your team has 3 people, and each person has 7 days. With a 20% buffer, does the plan fit?</summary><p>18 / 3 = 6 days per person. With the buffer: 6 x 1.2 = 7.2 days, which is more than the 7 available, so it <strong>does not fit</strong> (by 0.2 days). Cut a small must-have item, or move one to nice-to-have, rather than dropping the buffer.</p></details>
+<details><summary>Question 2: Your model scores 0.71 on your metric, the baseline scores 0.69, and your target is 0.85. What do you conclude, and what do you do?</summary><p>The model barely beats the baseline (2 points) and misses the target by 14. Do not claim success. First read the failures and check the data and the evaluation set (size, fairness, label quality). Then decide whether more or better data, a different approach, or a more realistic target is called for. Write down the reasoning: an honest 'not yet' with a plan is a good result.</p></details>
+<details><summary>Question 3: Why test with five users rather than fifty?</summary><p>Most usability problems show up in the first few sessions, and further users of the same kind mostly repeat the same issues (a rule of thumb says five find about 85%). Five is cheap enough to do often. Three small rounds of five, with fixes in between, find more than one round of fifteen.</p></details>
+
+<h2>Next steps</h2>
+<ul>
+<li>Open the <a href="https://colab.research.google.com/github/panchadk/AIStartup/blob/main/module11_capstone_build.ipynb" target="_blank" rel="noopener">Module 11 workbook in Colab</a> and start building.</li>
+<li>Back to the <a href="https://panchadk.github.io/AIStartup/module11_page.html">Module 11 page</a>.</li>
+</ul>
+<div class="nav"><a href="https://panchadk.github.io/AIStartup/module10_notes.html">&larr; Previous: Module 10 notes</a><a href="https://panchadk.github.io/AIStartup/module12_notes.html">Next: Module 12 notes, Capstone: ship and demo &rarr;</a></div>
+
+</body>
+</html>

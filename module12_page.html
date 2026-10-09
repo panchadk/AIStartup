@@ -1,0 +1,48 @@
+<h3>Module 12: Capstone, ship and demo</h3>
+<p><strong>Project:</strong> turn your prototype into something you can put in front of strangers: harden it, work out whether the business adds up, write the technical report, and pitch it in five minutes with a live demo. <strong>Time:</strong> about 12 hours core, plus about 4 hours for the stretch challenge.</p>
+<p><strong>Done when:</strong> your prototype is hardened and deployed at a public URL that works; you have a cost model (cost per request, price, margin, break-even); you wrote a short technical report with data, model choice, evaluation and honest limitations; you have a 5-minute pitch with a live demo; and you completed an honest self-assessment.</p>
+<p><a href="https://colab.research.google.com/github/panchadk/AIStartup/blob/main/module12_capstone_ship.ipynb" target="_blank" rel="noopener"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"></a></p>
+<p><em>Click the button to open the workbook in Google Colab. Choose File, Save a copy in Drive, and work in your own copy.</em></p>
+
+<p><strong>Lecture notes:</strong> <a href="https://panchadk.github.io/AIStartup/module12_notes.html" target="_blank" rel="noopener">read the illustrated notes</a> (about 25 minutes, with diagrams). Read them first, or return to them when you are stuck.</p>
+
+<h4>Before you start</h4>
+<ul>
+<li><strong>Use the project you built in Module 11</strong>, with its evaluation results and your "next steps" list. The workbook has a demo project (<code>USE_DEMO = True</code>) for practice.</li>
+<li><strong>You need</strong> a deployed demo (a Hugging Face Space as in Module 10, or any public address), the measured cost per request from Module 10, and about an hour of rehearsal time for the pitch.</li>
+</ul>
+
+<h4>Notes (about 10 minutes)</h4>
+<ul>
+<li><strong>Shipping</strong> means a public URL, error handling, and a short README so that others can use and reproduce your work.</li>
+<li>Report <strong>honest limits</strong>: where the model fails, which data it has not seen, and the risks (bias, privacy, hallucination, cost of a mistake).</li>
+<li><strong>Unit economics</strong>: cost per request, price per request, gross margin, and break-even. Compute is often tiny: price, volume and fixed costs decide the business.</li>
+<li><strong>Defensibility</strong> asks what stops a copycat. Common answers are proprietary data, workflow integration and distribution, not the model itself.</li>
+<li>A <strong>5-minute pitch</strong> has an order: problem, demo, how it works, results, cost and market, next steps. Show it working first.</li>
+</ul>
+
+<h4>Exercises (all in the workbook)</h4>
+<ol>
+<li><strong>Harden it.</strong> Write <code>validate_input()</code> and <code>safe_predict()</code>: bad input rejected, crashes contained, internal details kept out of the answer.</li>
+<li><strong>The business.</strong> Write <code>unit_economics()</code> and <code>price_for_margin()</code>, then build three scenarios and explain your price.</li>
+<li><strong>The technical report</strong> with six sections, including at least three specific limitations.</li>
+<li><strong>The pitch.</strong> Write <code>check_pitch_timing()</code> and plan your five minutes, with the demo the longest part.</li>
+<li><strong>The README</strong> with how to run, results and limitations.</li>
+<li><strong>Verify it is online</strong> and save your final record.</li>
+<li><strong>Assess yourself honestly</strong> against the rubric, then present on demo day.</li>
+<li><strong>Stretch:</strong> open-source your repository properly.</li>
+</ol>
+<h4>Hint ladder</h4>
+<ol>
+<li>The documentation and a web search for any function you are unsure about.</li>
+<li>The written hints under each step in the notebook.</li>
+<li>If a self-check fails, read its message: each one names the most likely mistake.</li>
+<li>Reference solution: open <a href="https://panchadk.github.io/AIStartup/module12_solution.html" target="_blank" rel="noopener">the solution page</a> only after your own honest attempt.</li>
+</ol>
+
+<h4>Before you submit</h4>
+<ul>
+<li>Every self-check cell passes, and you wrote your notes and answers.</li>
+<li>Take the Module 12 quiz (pass mark 4 of 5).</li>
+<li>Push the workbook, <code>REPORT.md</code>, <code>README.md</code> and <code>final_record.json</code>, with a three-line reflection (your project and URL, your headline result and biggest limitation, your first month as a company), to <code>module-12</code> in your portfolio repo. Do not push private data or keys. Then submit the link in the assignment below.</li>
+</ul>

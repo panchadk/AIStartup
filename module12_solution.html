@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Module 12: Reference solution</title>
+<style>
+  :root { --navy: #1F3864; --ink: #222222; --bg: #FFFFFF; --code-bg: #F3F6FA; --warn-bg: #FFF4E5; --warn-edge: #E08A00; }
+  body { font-family: Arial, Helvetica, sans-serif; max-width: 860px; margin: 0 auto; padding: 24px; line-height: 1.6; color: var(--ink); background: var(--bg); }
+  h3 { color: var(--navy); border-bottom: 3px solid var(--navy); padding-bottom: 6px; }
+  h4 { color: var(--navy); margin-top: 28px; }
+  strong { color: var(--navy); }
+  code { font-family: Consolas, "Courier New", monospace; background: var(--code-bg); padding: 1px 4px; border-radius: 3px; }
+  pre { background: var(--code-bg); border-left: 4px solid var(--navy); padding: 14px; overflow-x: auto; border-radius: 4px; }
+  pre code { background: none; padding: 0; }
+  .banner { background: var(--warn-bg); border-left: 4px solid var(--warn-edge); padding: 12px 16px; border-radius: 4px; margin: 16px 0; }
+  @media (prefers-color-scheme: dark) {
+    :root { --navy: #8FB4F0; --ink: #E6E6E6; --bg: #14181F; --code-bg: #1E2530; --warn-bg: #3A2C12; --warn-edge: #E0A040; }
+  }
+</style>
+</head>
+<body>
+<h3>Module 12: Reference solution</h3>
+<div class="banner"><strong>Try it yourself first.</strong> Open this page only after your own honest attempt. If a self-check is failing, read its message again and compare one function at a time. Matching line for line is not required: if every self-check passes, your solution is correct.</div>
+<h4>Step 1: hardening</h4>
+<p>Validation comes first so that bad input never reaches the model. The wrapper contains <em>every</em> kind of failure (it catches <code>Exception</code>, not one specific type), tells the user something generic, and sends the real details to the log. Never put the exception text in the answer: it can reveal file paths, library names or secrets.</p>
+<pre><code>def validate_input(raw, max_chars=2000):
+    if not isinstance(raw, str):
+        return False, &quot;input must be text&quot;
+    text = raw.strip()
+    if not text:
+        return False, &quot;input is empty&quot;
+    if len(text) &gt; max_chars:
+        return False, f&quot;input is too long (more than {max_chars} characters)&quot;
+    return True, &quot;&quot;
+
+def safe_predict(predict_fn, raw, log_fn=None, max_chars=2000):
+    ok, reason = validate_input(raw, max_chars)
+    if not ok:
+        return {&quot;ok&quot;: False, &quot;error&quot;: reason}
+    t0 = time.perf_counter()
+    try:
+        result = predict_fn(raw.strip())
+    except Exception as e:
+        if log_fn is not None:
+            log_fn(f&quot;{type(e).__name__}: {e}&quot;)
+        return {&quot;ok&quot;: False, &quot;error&quot;: &quot;the model could not process this input&quot;}
+    return {&quot;ok&quot;: True, &quot;result&quot;: result, &quot;latency_ms&quot;: (time.perf_counter() - t0) * 1000}</code></pre>
+<h4>Step 2: unit economics</h4>
+<p>Gross margin is measured against revenue, not against cost. Break-even asks how many requests it takes for the profit per request to repay the fixed costs, and if you lose money on every request, the answer is never. The price for a target margin comes from solving margin = (price - cost) / price.</p>
+<pre><code>def unit_economics(price_per_request, cost_per_request, fixed_monthly, requests_per_month):
+    revenue = price_per_request * requests_per_month
+    variable = cost_per_request * requests_per_month
+    gross = revenue - variable
+    return {&quot;revenue&quot;: revenue, &quot;variable_cost&quot;: variable, &quot;gross_profit&quot;: gross,
+            &quot;gross_margin&quot;: gross / revenue if revenue else 0.0, &quot;net_profit&quot;: gross - fixed_monthly,
+            &quot;break_even_requests&quot;: fixed_monthly / (price_per_request - cost_per_request) if price_per_request &gt; cost_per_request else float(&quot;inf&quot;)}
+
+def price_for_margin(cost_per_request, target_gross_margin):
+    return cost_per_request / (1 - target_gross_margin)</code></pre>
+<h4>Step 4: the pitch timing</h4>
+<p>Order matters as much as length: the same sections in another order are a different pitch. The longest section should be the demo.</p>
+<pre><code>REQUIRED_ORDER = [&quot;problem&quot;, &quot;demo&quot;, &quot;how_it_works&quot;, &quot;results&quot;, &quot;cost_and_market&quot;, &quot;next_steps&quot;]
+
+def check_pitch_timing(slides, limit_seconds=300):
+    names = [s[&quot;section&quot;] for s in slides]
+    total = sum(s[&quot;seconds&quot;] for s in slides)
+    return {&quot;total_seconds&quot;: total, &quot;within_limit&quot;: total &lt;= limit_seconds, &quot;order_ok&quot;: names == REQUIRED_ORDER,
+            &quot;missing&quot;: [s for s in REQUIRED_ORDER if s not in names], &quot;longest&quot;: max(slides, key=lambda s: s[&quot;seconds&quot;])[&quot;section&quot;]}</code></pre>
+<h4>A sample pitch (about 300 seconds)</h4>
+<table>
+<tr><th>Section</th><th>Seconds</th><th>What you say or show</th></tr>
+<tr><td>Problem</td><td>40</td><td>One user, one pain, one number: "owners find a site outage hours late".</td></tr>
+<tr><td>Demo</td><td>90</td><td>Paste a real urgent ticket and show it flagged. Paste a polite thank-you that contains the word "urgent" and show that it is not. Show a bad input being rejected.</td></tr>
+<tr><td>How it works</td><td>50</td><td>One picture: ticket in, small model, label out, API into the helpdesk.</td></tr>
+<tr><td>Results</td><td>50</td><td>98% against 46% for the naive rule, on a fixed test set. One honest limitation, said by you first.</td></tr>
+<tr><td>Cost and market</td><td>40</td><td>Compute costs a fraction of a cent a ticket, price is one cent, thousands of small shops.</td></tr>
+<tr><td>Next steps</td><td>30</td><td>What you need (pilot shops, 300 real labeled tickets) and what you will do first.</td></tr>
+</table>
+
+<h4>What a strong technical report and README look like</h4>
+<ul>
+<li><strong>Summary:</strong> the headline in two sentences, with a number against a baseline.</li>
+<li><strong>Data:</strong> source, size, labeling guide, how the test set is kept fixed.</li>
+<li><strong>Model choice:</strong> what you chose, <em>why</em>, and what you compared it with.</li>
+<li><strong>Evaluation:</strong> numbers, not adjectives: your metric, the baseline's, the target, latency, cost.</li>
+<li><strong>Limitations:</strong> at least three specific points covering failure cases, data gaps and risks. "It may make mistakes" is not a limitation. "Short chat messages are missed more than half the time" is.</li>
+<li><strong>README:</strong> what it does, a link to the demo, numbered steps to run it, results, limitations.</li>
+</ul>
+
+<h4>Questions to expect on demo day, and honest answers</h4>
+<ul>
+<li><em>What is your baseline, and how much better are you?</em> State both numbers and the gap.</li>
+<li><em>What does it get wrong?</em> Name your biggest failure pattern, with an example.</li>
+<li><em>What does it cost to run, and who pays?</em> Cost per request, price, margin, and what the customer pays today.</li>
+<li><em>What stops someone copying it?</em> Your data, your integration, your speed of learning, not the model.</li>
+<li><em>What would you do with the next month?</em> Your top two next steps from the failure analysis.</li>
+</ul>
+
+<h4>Sample answers to the written questions</h4>
+<ul>
+<li><strong>Which scenario loses money, and why?</strong> The pessimistic one: low volume and a lower price cannot cover the fixed costs. The compute is almost free, so the fixed costs and the volume decide it. What you must believe for the base case: customers will pay roughly a cent per ticket, and enough shops will send enough tickets.</li>
+<li><strong>The number an investor questions first:</strong> usually the price (no customer has confirmed they will pay it) or the volume. Both are assumptions, so be honest that they are, and say how you would test them (pilot customers).</li>
+<li><strong>The stranger test:</strong> the first thing that confuses a stranger is almost never the model. It is a missing instruction, an unclear page, or a slow first load. Fix that before the demo.</li>
+</ul>
+
+<h4>Common mistakes and what they look like</h4>
+<ul>
+<li><strong>Leaking the exception text to the user:</strong> a message such as "KeyError: api_key" tells an attacker where to push. Generic message out, details to the log.</li>
+<li><strong>Catching only one kind of error:</strong> the first different failure takes the service down. Catch <code>Exception</code>.</li>
+<li><strong>Pricing from cost alone:</strong> compute costs a fraction of a cent, so cost-plus pricing gives you a business that cannot cover a single month of fixed costs. Price from the value to the customer.</li>
+<li><strong>Believing the optimistic scenario only:</strong> the pessimistic scenario is the one that tells you whether you survive.</li>
+<li><strong>Generic limitations:</strong> they signal that you did not look. Be specific, with numbers.</li>
+<li><strong>A pitch that starts with the model:</strong> the audience does not yet know why they should care. Start with the problem, then show it working.</li>
+<li><strong>An unrehearsed live demo:</strong> it fails on the one input you did not test. Rehearse with a timer, and keep a backup recording.</li>
+<li><strong>A Space that is asleep or private:</strong> the demo fails in front of the audience. Open it a minute before, and check from a private window.</li>
+<li><strong>Calling it deployed without a stranger trying it.</strong></li>
+</ul>
+
+<h4>What to do next</h4>
+<ul>
+<li>Complete the three-line reflection and push your workbook, report, README and final record to your portfolio repo.</li>
+<li>Take the Module 12 quiz in Moodle.</li>
+<li>Present on demo day, and give your peers feedback that is <strong>kind, specific and useful</strong>: one thing that worked, one question, one suggestion.</li>
+<li>Keep your portfolio public. It is now a record of twelve things you built, and a working AI product with a report, a price and a pitch.</li>
+</ul>
+
+</body>
+</html>

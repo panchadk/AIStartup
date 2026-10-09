@@ -1,0 +1,49 @@
+<h3>Module 11: Capstone, build</h3>
+<p><strong>Project:</strong> build the core of your own AI startup prototype, alone or in a team of 2 to 4. Get a thin version working from end to end, and measure it honestly. Module 12 hardens, prices and presents it. <strong>Time:</strong> about 14 hours core, plus about 6 hours for the stretch challenge.</p>
+<p><strong>Done when:</strong> your one-page idea is final and you have a scope list; you have a plan that fits your time and interfaces your team agreed on; an end-to-end version works on real inputs and someone outside your team can run it; and you ran your evaluation harness on it, compared it with a simple baseline, and recorded the results.</p>
+<p><a href="https://colab.research.google.com/github/panchadk/AIStartup/blob/main/module11_capstone_build.ipynb" target="_blank" rel="noopener"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"></a></p>
+<p><em>Click the button to open the workbook in Google Colab. Choose File, Save a copy in Drive, and work in your own copy with your team.</em></p>
+
+<p><strong>Lecture notes:</strong> <a href="https://panchadk.github.io/AIStartup/module11_notes.html" target="_blank" rel="noopener">read the illustrated notes</a> (about 25 minutes, with diagrams). Read them first, or return to them when you are stuck.</p>
+
+<h4>Before you start</h4>
+<ul>
+<li><strong>Your idea.</strong> Start from the one-page capstone idea you wrote in Module 10. If you have no idea you like yet, pick a small one that you can finish: a specific user, data you can really get, and a number that means "good enough".</li>
+<li><strong>Your team.</strong> Teams of 2 to 4. Agree the roles on day 1 (data and labeling, model, API and deployment, pitch and testing). Working alone is fine: you wear every hat, so write the roles down anyway.</li>
+<li><strong>Practice first.</strong> The workbook has a ready-made demo project (<code>USE_DEMO = True</code>) so that you can see the whole workflow once before doing it for real.</li>
+</ul>
+
+<h4>Notes (about 10 minutes)</h4>
+<ul>
+<li>Start with <strong>one user and one painful problem</strong>. A narrow product that works beats a broad one that does not.</li>
+<li>Build the <strong>thinnest end-to-end version first</strong> (input, model, output, and a way to run it), then thicken the weakest part.</li>
+<li>Decide <strong>build versus buy</strong> for each part: use a pretrained model or an API unless you have a clear reason to train your own.</li>
+<li><strong>Test with real users early.</strong> Five honest user tests teach more than another week of tuning.</li>
+<li>In a team, <strong>agree the interfaces first</strong>, split the work by component, and use Git branches and short daily check-ins.</li>
+<li>Always compare with a <strong>simple baseline</strong> and a <strong>target</strong>. A number alone means little.</li>
+</ul>
+
+<h4>Exercises (all in the workbook)</h4>
+<ol>
+<li><strong>Finalize your project card</strong> and your scope list: must have, nice to have, out of scope.</li>
+<li><strong>Plan it.</strong> Write <code>schedule_check()</code> and make your must-have work fit the calendar, with a 20% buffer.</li>
+<li><strong>Agree the interfaces.</strong> Write <code>check_pipeline()</code> and describe your components, with one owner each.</li>
+<li><strong>Build the thinnest end-to-end version</strong> and run the smoke test on at least 10 real inputs. Write down how to run it.</li>
+<li><strong>Evaluate it.</strong> Write <code>run_capstone_eval()</code>, run your model and a baseline on the same fixed set, and record the results.</li>
+<li><strong>Read the failures</strong> and write your prioritized next steps.</li>
+<li><strong>Stretch:</strong> let 5 users try it and summarize what you learn.</li>
+</ol>
+<h4>Hint ladder</h4>
+<ol>
+<li>The documentation and a web search for any function you are unsure about.</li>
+<li>The written hints under each step in the notebook.</li>
+<li>If a self-check fails, read its message: each one names the most likely mistake.</li>
+<li>Reference solution: open <a href="https://panchadk.github.io/AIStartup/module11_solution.html" target="_blank" rel="noopener">the solution page</a> only after your own honest attempt.</li>
+</ol>
+
+<h4>Before you submit</h4>
+<ul>
+<li>Every self-check cell passes, and you wrote your notes and answers.</li>
+<li>Take the Module 11 quiz (pass mark 4 of 5).</li>
+<li>Push the workbook, <code>capstone_eval_build.json</code> and a three-line reflection (your project and team, your result against the baseline and target, one scope change you would make) to <code>module-11</code> in your portfolio repo. Do not push private data. Then submit the link in the assignment below.</li>
+</ul>

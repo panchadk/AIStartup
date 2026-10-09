@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Module 12 lecture notes: Capstone, ship and demo</title>
+<style>
+  :root { --navy:#1F3864;--ink:#222222;--bg:#FFFFFF;--code-bg:#F3F6FA;--hl-bg:#FFF4E5;--accent:#D9730D;--muted:#8A94A6; --muted-text:#555555; --good:#2E7D32; }
+  body { font-family: Arial, Helvetica, sans-serif; max-width: 860px; margin: 0 auto; padding: 24px; line-height: 1.65; color: var(--ink); background: var(--bg); }
+  h1 { color: var(--navy); margin-bottom: 4px; }
+  h2 { color: var(--navy); border-bottom: 3px solid var(--navy); padding-bottom: 6px; margin-top: 40px; }
+  h3 { color: var(--navy); margin-top: 26px; }
+  strong { color: var(--navy); }
+  a { color: var(--navy); }
+  .meta { color: var(--muted-text); margin-top: 0; }
+  code { font-family: Consolas, "Courier New", monospace; background: var(--code-bg); padding: 1px 4px; border-radius: 3px; }
+  pre { background: var(--code-bg); border-left: 4px solid var(--navy); padding: 14px; overflow-x: auto; border-radius: 4px; }
+  pre code { background: none; padding: 0; }
+  .toc { background: var(--code-bg); border-radius: 6px; padding: 12px 20px; }
+  .toc ol { margin: 6px 0; }
+  .note { background: var(--hl-bg); border-left: 4px solid var(--accent); padding: 12px 16px; border-radius: 4px; margin: 18px 0; }
+  .key { background: var(--code-bg); border-left: 4px solid var(--navy); padding: 12px 16px; border-radius: 4px; margin: 18px 0; }
+  figure { margin: 26px 0; }
+  figcaption { font-size: .9em; color: var(--muted-text); text-align: center; margin-top: 6px; }
+  svg.fig { width: 100%; height: auto; max-width: 760px; display: block; margin: 0 auto; }
+  table { border-collapse: collapse; width: 100%; margin: 14px 0; }
+  th, td { border: 1px solid var(--muted); padding: 7px 10px; text-align: left; vertical-align: top; }
+  th { background: var(--code-bg); color: var(--navy); }
+  details { background: var(--code-bg); border-radius: 6px; padding: 8px 14px; margin: 10px 0; }
+  summary { cursor: pointer; font-weight: bold; color: var(--navy); }
+  .nav { display: flex; justify-content: space-between; gap: 12px; margin-top: 40px; padding-top: 14px; border-top: 1px solid var(--muted); flex-wrap: wrap; }
+
+svg .box{fill:var(--code-bg);stroke:var(--navy);stroke-width:2}
+svg .box2{fill:var(--bg);stroke:var(--navy);stroke-width:2}
+svg .hl{fill:var(--hl-bg);stroke:var(--accent);stroke-width:2}
+svg .t{fill:var(--ink);font-family:Arial,Helvetica,sans-serif;font-size:14px}
+svg .tb{font-weight:bold}
+svg .ts{font-size:12px}
+svg .tl{font-size:16px}
+svg .tn{fill:var(--navy)}
+svg .ta{fill:var(--accent)}
+svg .tm{fill:var(--muted)}
+svg .ln{stroke:var(--navy);stroke-width:2.5;fill:none}
+svg .la{stroke:var(--accent);stroke-width:2.5;fill:none}
+svg .lg{stroke:var(--muted);stroke-width:1;fill:none;opacity:.55}
+svg .ax{stroke:var(--ink);stroke-width:1.5;fill:none}
+svg .fw{stroke:var(--navy);stroke-width:2.5;fill:none}
+svg .bw{stroke:var(--accent);stroke-width:2.5;fill:none}
+svg .dash{stroke-dasharray:6 4}
+svg .mN{fill:var(--navy)}
+svg .mA{fill:var(--accent)}
+svg .dotN{fill:var(--navy)}
+svg .dotA{fill:var(--accent)}
+svg .sqN{fill:var(--navy)}
+svg .sqA{fill:var(--accent)}
+svg .sqM{fill:var(--muted)}
+svg .tbg{fill:var(--bg);font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:bold}
+svg .node{fill:var(--bg);stroke:var(--navy);stroke-width:2}
+
+  @media (prefers-color-scheme: dark) {
+    :root { --navy:#8FB4F0;--ink:#E6E6E6;--bg:#14181F;--code-bg:#1E2530;--hl-bg:#3A2C12;--accent:#F0A040;--muted:#6B778C; --muted-text:#B5BCC8; --good:#66BB6A; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Module 12: Capstone, ship and demo</h1>
+<p class="meta">Lecture notes with diagrams. Reading time: about 25 minutes. Read once, then open the workbook. Come back here before you write the report, set your price, and rehearse the pitch.</p>
+
+<div class="toc"><strong>In these notes</strong>
+<ol>
+<li><a href="#big">The big picture</a></li>
+<li><a href="#harden">Hardening</a></li>
+<li><a href="#econ">Does the business add up?</a></li>
+<li><a href="#report">The technical report and honest limitations</a></li>
+<li><a href="#pitch">The five-minute pitch</a></li>
+<li><a href="#moat">Defensibility</a></li>
+<li><a href="#readme">The README and open source</a></li>
+<li><a href="#day">Demo day</a></li>
+<li><a href="#terms">Key terms</a>, <a href="#pitfalls">pitfalls</a>, and <a href="#check">check yourself</a></li>
+</ol></div>
+
+<h2 id="big">1. The big picture</h2>
+<p>In Module 11 you asked: <em>does it work?</em> Now there are three new questions: <strong>what happens when it does not?</strong> (hardening), <strong>does it pay?</strong> (economics), and <strong>can a stranger understand and believe it in five minutes?</strong> (the report and the pitch).</p>
+<p>These are the things that separate a demo from a product, and a student project from a startup. None of them needs a better model.</p>
+
+<h2 id="harden">2. Hardening</h2>
+<p>A prototype works when you feed it good input. A product meets input from the real world: empty, enormous, the wrong type, or deliberately hostile. Hardening is a few layers of protection:</p>
+<figure>
+<svg class="fig" viewBox="0 0 760 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Five layers of hardening: validate input, contain crashes, hide internals, log safely, and monitor"><defs><marker id="aN121" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA121" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><rect x="10" y="14" width="740" height="48" rx="8" class="hl"/><text x="26" y="35" class="t ts tb" text-anchor="start" >1 Validate the input</text><text x="26" y="52" class="t ts tm" text-anchor="start" >empty, huge, wrong type, junk</text><text x="735" y="44" class="t ts" text-anchor="end" >stops bad requests before they cost anything</text><rect x="24" y="70" width="712" height="48" rx="8" class="box"/><text x="40" y="91" class="t ts tb" text-anchor="start" >2 Contain crashes</text><text x="40" y="108" class="t ts tm" text-anchor="start" >try / except around the model</text><text x="721" y="100" class="t ts" text-anchor="end" >one bad input cannot take the service down</text><rect x="38" y="126" width="684" height="48" rx="8" class="hl"/><text x="54" y="147" class="t ts tb" text-anchor="start" >3 Hide the internals</text><text x="54" y="164" class="t ts tm" text-anchor="start" >generic error to the user, details to the log</text><text x="707" y="156" class="t ts" text-anchor="end" >no paths, keys or library names leak</text><rect x="52" y="182" width="656" height="48" rx="8" class="box"/><text x="68" y="203" class="t ts tb" text-anchor="start" >4 Log safely</text><text x="68" y="220" class="t ts tm" text-anchor="start" >length, hash, label, latency</text><text x="693" y="212" class="t ts" text-anchor="end" >you can debug without keeping private text</text><rect x="66" y="238" width="628" height="48" rx="8" class="box"/><text x="82" y="259" class="t ts tb" text-anchor="start" >5 Watch it</text><text x="82" y="276" class="t ts tm" text-anchor="start" >health check, latency, error rate</text><text x="679" y="268" class="t ts" text-anchor="end" >you notice problems before users do</text><text x="380" y="312" class="t tb" text-anchor="middle" >Assume every input is hostile or broken, and every dependency will fail one day.</text></svg>
+<figcaption>Five layers. The first and third matter most, and cost almost nothing to build.</figcaption>
+</figure>
+<ul>
+<li><strong>Validate the input</strong> before the model sees it: type, emptiness, length, and for images the file type and size. Rejecting a bad request is free; running the model on it is not.</li>
+<li><strong>Contain crashes.</strong> Wrap the model call in <code>try / except Exception</code>, so that one bad input cannot take the service down.</li>
+<li><strong>Do not leak internals.</strong> The user gets a generic message ("the model could not process this input"). The exact exception, which may contain file paths, library names or secrets, goes to your log.</li>
+<li><strong>Log safely</strong> (Module 10): lengths and hashes, not private text.</li>
+<li><strong>Watch it:</strong> a health check, latency, error rate. You cannot fix what you cannot see.</li>
+</ul>
+<div class="note"><strong>Attack your own project.</strong> Send it None, an empty string, 5,000 characters, a number, a list, strange symbols, and an input that you know crashes the model. Whatever breaks in your hands will break in a stranger's.</div>
+
+<h2 id="econ">3. Does the business add up?</h2>
+<p>Four numbers describe the economics of a service:</p>
+<pre><code>revenue        = price per request x requests
+variable cost  = cost per request x requests
+gross profit   = revenue - variable cost
+gross margin   = gross profit / revenue
+net profit     = gross profit - fixed monthly costs
+break-even     = fixed monthly costs / (price - cost per request)   [requests per month]</code></pre>
+<figure>
+<svg class="fig" viewBox="0 0 760 335" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Waterfall from revenue per thousand requests through compute cost and fixed costs to net profit"><defs><marker id="aN122" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA122" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><text x="380" y="20" class="t tb tn" text-anchor="middle" >Where does 1,000 requests' worth of revenue go? (base scenario)</text><rect x="90" y="80.0" width="100" height="170.0" rx="3" class="sqN"/><text x="140" y="270" class="t ts tb" text-anchor="middle" >Revenue</text><text x="140" y="72.0" class="t ts tb" text-anchor="middle" >$10.00</text><rect x="250" y="80.0" width="100" height="3.0" rx="3" class="sqM"/><text x="300" y="270" class="t ts tb" text-anchor="middle" >Compute cost</text><text x="300" y="72.0" class="t ts tb" text-anchor="middle" >-$0.05</text><rect x="410" y="80.9" width="100" height="25.5" rx="3" class="sqM"/><text x="460" y="270" class="t ts tb" text-anchor="middle" >Fixed costs share</text><text x="460" y="72.85000000000002" class="t ts tb" text-anchor="middle" >-$1.50</text><rect x="570" y="106.4" width="100" height="143.6" rx="3" class="sqA"/><text x="620" y="270" class="t ts tb" text-anchor="middle" >Net profit</text><text x="620" y="98.35000000000002" class="t ts tb" text-anchor="middle" >$8.45</text><line x1="70" y1="250" x2="720" y2="250" class="ax"/><text x="380" y="296" class="t ts" text-anchor="middle" >Price $0.01, compute $0.00005, fixed $150 a month, 100,000 requests a month.</text><text x="380" y="316" class="t ts tb" text-anchor="middle" >Compute is tiny. The business is decided by price, volume and the fixed costs.</text></svg>
+<figcaption>Per 1,000 requests in the base scenario. Compute is a rounding error: the fixed costs and the price decide the business.</figcaption>
+</figure>
+<p>A worked example (the demo project): price 1 cent, compute 0.005 cents, fixed costs 150 dollars a month, 100,000 requests a month. Revenue is 1,000 dollars, compute 5 dollars, gross margin 99.5%, net profit 845 dollars, and break-even at about 15,000 requests a month.</p>
+<figure>
+<svg class="fig" viewBox="0 0 760 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Break-even chart: revenue and total cost cross at about 15,000 requests a month"><defs><marker id="aN123" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA123" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><line x1="90" y1="250" x2="700" y2="250" class="ax"/><line x1="90" y1="250" x2="90" y2="50" class="ax"/><line x1="90" y1="202.38095238095238" x2="700" y2="202.38095238095238" class="lg"/><text x="82" y="206.38095238095238" class="t ts tm" text-anchor="end" >$100</text><line x1="90" y1="154.76190476190476" x2="700" y2="154.76190476190476" class="lg"/><text x="82" y="158.76190476190476" class="t ts tm" text-anchor="end" >$200</text><line x1="90" y1="107.14285714285714" x2="700" y2="107.14285714285714" class="lg"/><text x="82" y="111.14285714285714" class="t ts tm" text-anchor="end" >$300</text><line x1="90" y1="59.52380952380952" x2="700" y2="59.52380952380952" class="lg"/><text x="82" y="63.52380952380952" class="t ts tm" text-anchor="end" >$400</text><text x="90.0" y="268" class="t ts tm" text-anchor="middle" >0</text><text x="242.5" y="268" class="t ts tm" text-anchor="middle" >10,000</text><text x="395.0" y="268" class="t ts tm" text-anchor="middle" >20,000</text><text x="547.5" y="268" class="t ts tm" text-anchor="middle" >30,000</text><text x="700.0" y="268" class="t ts tm" text-anchor="middle" >40,000</text><line x1="90.0" y1="250.0" x2="700.0" y2="59.52380952380952" class="ln"/><line x1="90.0" y1="178.57142857142856" x2="700.0" y2="177.61904761904762" class="la"/><circle cx="319.9" cy="178.2" r="6" class="dotA"/><text x="333.89375" y="206.21428571428572" class="t ts tb ta" text-anchor="start" >break-even: about 15,000 requests a month</text><text x="696.0" y="77.52380952380952" class="t ts tn" text-anchor="end" >revenue</text><text x="98" y="170.57142857142856" class="t ts ta" text-anchor="start" >total cost (fixed $150 + compute)</text><text x="390" y="290" class="t ts tm" text-anchor="middle" >requests per month</text><text x="380" y="22" class="t tb tn" text-anchor="middle" >Revenue minus cost: the loss turns into profit at the break-even point</text><text x="380" y="312" class="t ts tb" text-anchor="middle" >Below it you lose money every month; above it, every extra request adds almost its full price.</text></svg>
+<figcaption>Below the break-even point you lose money each month. Above it, nearly every extra request is profit.</figcaption>
+</figure>
+<h3>Price from value, not from cost</h3>
+<p>The compute for an AI request is often a tiny fraction of a cent. If you charged cost plus a margin, you would earn too little to pay a single month of fixed costs. The right question is: <strong>what is the problem worth to the customer?</strong> What do they pay today (a person's time, lost sales, a competitor)? Price somewhere well below that value, and well above your cost.</p>
+<h3>Three scenarios</h3>
+<p>Never present one number. Build a <strong>pessimistic</strong>, a <strong>base</strong> and an <strong>optimistic</strong> case (different price and volume). The pessimistic case tells you whether you survive, and the number an investor questions first is usually the assumption you are least sure of. Say which it is, and how you would test it with pilot customers.</p>
+
+<h2 id="report">4. The technical report and honest limitations</h2>
+<p>The report lets someone else understand, trust and continue your work. It has six sections: <strong>summary, data, model choice, evaluation, limitations, next steps</strong>. It is not a sales document, and its credibility comes from its honesty.</p>
+<figure>
+<svg class="fig" viewBox="0 0 760 275" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A limitations section covers failure cases, data gaps and risks, and strong statements are specific"><defs><marker id="aN125" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA125" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><rect x="10" y="14" width="240" height="214" rx="8" class="box"/><text x="130" y="40" class="t tb tn" text-anchor="middle" >Failure cases</text><text x="130" y="58" class="t ts ta" text-anchor="middle" >where it goes wrong</text><rect x="20" y="72" width="220" height="44" rx="5" class="box2" style="opacity:.8"/><text x="130" y="99" class="t ts tm" text-anchor="middle" >weak: 'it may make mistakes'</text><rect x="20" y="126" width="220" height="92" rx="5" class="hl"/><text x="130" y="142" class="t ts tb ta" text-anchor="middle" >strong</text><text x="130" y="162" class="t ts" text-anchor="middle" >'short chat messages are missed</text><text x="130" y="178" class="t ts" text-anchor="middle" >more than half the time (recall</text><text x="130" y="194" class="t ts" text-anchor="middle" >46%)'</text><rect x="260" y="14" width="240" height="214" rx="8" class="box"/><text x="380" y="40" class="t tb tn" text-anchor="middle" >Data gaps</text><text x="380" y="58" class="t ts ta" text-anchor="middle" >what the data does not cover</text><rect x="270" y="72" width="220" height="44" rx="5" class="box2" style="opacity:.8"/><text x="380" y="99" class="t ts tm" text-anchor="middle" >weak: 'more data would help'</text><rect x="270" y="126" width="220" height="92" rx="5" class="hl"/><text x="380" y="142" class="t ts tb ta" text-anchor="middle" >strong</text><text x="380" y="162" class="t ts" text-anchor="middle" >'English only, one kind of</text><text x="380" y="178" class="t ts" text-anchor="middle" >shop, templated wording'</text><rect x="510" y="14" width="240" height="214" rx="8" class="box"/><text x="630" y="40" class="t tb tn" text-anchor="middle" >Risks</text><text x="630" y="58" class="t ts ta" text-anchor="middle" >what could cause harm</text><rect x="520" y="72" width="220" height="44" rx="5" class="box2" style="opacity:.8"/><text x="630" y="99" class="t ts tm" text-anchor="middle" >weak: 'there are some risks'</text><rect x="520" y="126" width="220" height="92" rx="5" class="hl"/><text x="630" y="142" class="t ts tb ta" text-anchor="middle" >strong</text><text x="630" y="162" class="t ts" text-anchor="middle" >'a missed urgent ticket costs a</text><text x="630" y="178" class="t ts" text-anchor="middle" >sale; tickets hold personal</text><text x="630" y="194" class="t ts" text-anchor="middle" >data, so only hashes are</text><text x="630" y="210" class="t ts" text-anchor="middle" >logged'</text><text x="380" y="256" class="t tb" text-anchor="middle" >Specific limitations build trust. Vague ones sound like you did not look.</text></svg>
+<figcaption>Weak limitations are generic. Strong ones are specific, with numbers.</figcaption>
+</figure>
+<ul>
+<li><strong>Failure cases:</strong> where it goes wrong, with examples and rates.</li>
+<li><strong>Data gaps:</strong> what the data does not cover (languages, regions, kinds of customers), and how it was made (generated, templated, collected).</li>
+<li><strong>Risks:</strong> unequal performance across groups, privacy, misuse, the cost of a wrong answer.</li>
+</ul>
+<p>Saying your limitations yourself, first, is not a weakness. It tells the reader that you looked, and it is the quickest way to earn belief in the rest.</p>
+
+<h2 id="pitch">5. The five-minute pitch</h2>
+<figure>
+<svg class="fig" viewBox="0 0 760 295" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A 300-second pitch divided into problem, demo, how it works, results, cost and market, and next steps"><defs><marker id="aN124" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA124" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><text x="380" y="22" class="t tb tn" text-anchor="middle" >A five-minute pitch (300 seconds): the demo gets the most time</text><rect x="20.0" y="50" width="93.0" height="64" rx="6" class="box"/><text x="66.5" y="78" class="t ts tb" text-anchor="middle" >Problem</text><text x="66.5" y="98" class="t ts tm" text-anchor="middle" >40s</text><rect x="116.0" y="50" width="213.0" height="64" rx="6" class="hl"/><text x="222.5" y="78" class="t ts tb" text-anchor="middle" >DEMO</text><text x="222.5" y="98" class="t ts tm" text-anchor="middle" >90s</text><rect x="332.0" y="50" width="117.0" height="64" rx="6" class="box"/><text x="390.5" y="78" class="t ts tb" text-anchor="middle" >How it works</text><text x="390.5" y="98" class="t ts tm" text-anchor="middle" >50s</text><rect x="452.0" y="50" width="117.0" height="64" rx="6" class="box"/><text x="510.5" y="78" class="t ts tb" text-anchor="middle" >Results</text><text x="510.5" y="98" class="t ts tm" text-anchor="middle" >50s</text><rect x="572.0" y="50" width="93.0" height="64" rx="6" class="box"/><text x="618.5" y="78" class="t ts tb" text-anchor="middle" >Cost + market</text><text x="618.5" y="98" class="t ts tm" text-anchor="middle" >40s</text><rect x="668.0" y="50" width="69.0" height="64" rx="6" class="box"/><text x="702.5" y="78" class="t ts tb" text-anchor="middle" >Next</text><text x="702.5" y="98" class="t ts tm" text-anchor="middle" >30s</text><text x="380" y="150" class="t tb" text-anchor="middle" >Show it working first, then explain it. A live demo that works is worth a hundred slides.</text><circle cx="40" cy="190" r="5" class="sqA"/><text x="54" y="195" class="t ts" text-anchor="start" >One idea per section. If a point does not help the audience decide, cut it.</text><circle cx="40" cy="222" r="5" class="sqA"/><text x="54" y="227" class="t ts" text-anchor="start" >Say your numbers against the baseline, and one honest limitation before anyone asks.</text><circle cx="40" cy="254" r="5" class="sqA"/><text x="54" y="259" class="t ts" text-anchor="start" >Rehearse with a timer, out loud, three times. Have a backup if the network fails.</text></svg>
+<figcaption>Six sections, 300 seconds, and the demo is the longest. The same material in another order is a worse pitch.</figcaption>
+</figure>
+<ol>
+<li><strong>Problem (40 s):</strong> one user, one pain, one number.</li>
+<li><strong>Demo (90 s):</strong> show it working live, before explaining it. Include one case where it handles something tricky.</li>
+<li><strong>How it works (50 s):</strong> one simple picture.</li>
+<li><strong>Results (50 s):</strong> your numbers against the baseline, and one honest limitation.</li>
+<li><strong>Cost and market (40 s):</strong> what it costs, what you charge, who pays.</li>
+<li><strong>Next steps (30 s):</strong> what you need and what you will do first.</li>
+</ol>
+<ul>
+<li><strong>Rehearse out loud with a timer</strong> at least three times. The seconds in your plan must be the seconds you really take.</li>
+<li><strong>Prepare for failure:</strong> a backup screen recording, and the demo page already open and awake.</li>
+<li>Nobody remembers the fifth thing you said. Make the first two count.</li>
+</ul>
+
+<h2 id="moat">6. Defensibility</h2>
+<p>An investor, a customer or a competitor will ask: <strong>what stops someone else doing this?</strong> If your answer is "our model", it is a weak answer, because the same pretrained models are available to everyone.</p>
+<figure>
+<svg class="fig" viewBox="0 0 760 292" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four sources of defensibility: proprietary data, workflow integration, distribution and speed of learning"><defs><marker id="aN126" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA126" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><text x="380" y="20" class="t tb tn" text-anchor="middle" >What stops a copycat? (defensibility)</text><rect x="10" y="40" width="365" height="88" rx="8" class="hl"/><text x="192" y="68" class="t tb" text-anchor="middle" >Proprietary data</text><text x="192" y="92" class="t ts" text-anchor="middle" >your labeled examples, collected from real use</text><text x="192" y="112" class="t ts tm" text-anchor="middle" >grows with every customer</text><rect x="385" y="40" width="365" height="88" rx="8" class="box"/><text x="567" y="68" class="t tb" text-anchor="middle" >Workflow integration</text><text x="567" y="92" class="t ts" text-anchor="middle" >built into the tools people already use</text><text x="567" y="112" class="t ts tm" text-anchor="middle" >costly to switch away</text><rect x="10" y="140" width="365" height="88" rx="8" class="box"/><text x="192" y="168" class="t tb" text-anchor="middle" >Distribution</text><text x="192" y="192" class="t ts" text-anchor="middle" >you reach the customers first and cheaply</text><text x="192" y="212" class="t ts tm" text-anchor="middle" >trust and channels</text><rect x="385" y="140" width="365" height="88" rx="8" class="box"/><text x="567" y="168" class="t tb" text-anchor="middle" >Speed of learning</text><text x="567" y="192" class="t ts" text-anchor="middle" >you fix failures faster than others</text><text x="567" y="212" class="t ts tm" text-anchor="middle" >the loop from Module 9</text><text x="380" y="256" class="t tb" text-anchor="middle" >The same pretrained model as everyone else is not a moat.</text><text x="380" y="276" class="t tb" text-anchor="middle" >Your data, your integration and your speed of learning are.</text></svg>
+<figcaption>Four things that are hard to copy. Notice that none of them is the model.</figcaption>
+</figure>
+<ul>
+<li><strong>Proprietary data</strong>, especially labeled data that grows with every customer.</li>
+<li><strong>Workflow integration:</strong> being part of the tools your customers use every day makes you costly to leave.</li>
+<li><strong>Distribution:</strong> reaching the customers first, cheaply, with trust.</li>
+<li><strong>Speed of learning:</strong> the loop of Module 9 (evaluate, find failures, fix) run faster than the competition.</li>
+</ul>
+
+<h2 id="readme">7. The README and open source</h2>
+<p>The README is the front door of your repository. A stranger should understand <strong>what it is</strong>, <strong>try it in minutes</strong>, and <strong>see what it can and cannot do</strong>. It needs: a title and two sentences on what it does; a link to the live demo; <strong>numbered steps to run it</strong> (with the install command); your results with the baseline; and your limitations.</p>
+<ul>
+<li>Test it the way a user would: ask someone to follow it on a clean machine, without your help.</li>
+<li>If you publish the repository, add a <strong>license</strong>, pin library versions, and make sure that no key or private data is in the files <em>or in the history</em>: a secret in an old commit is still public.</li>
+</ul>
+
+<h2 id="day">8. Demo day</h2>
+<ul>
+<li>Open your demo page a minute before, so that a sleeping Space is awake.</li>
+<li>Know which input you will paste, and test it that day.</li>
+<li>Have the numbers for the questions you will be asked: baseline, failures, cost, who pays, and what stops a copycat.</li>
+<li>When giving feedback to others: <strong>one thing that worked, one question, one suggestion</strong>. Specific beats nice, and kind beats clever.</li>
+</ul>
+
+<h2 id="terms">9. Key terms</h2>
+<table>
+<tr><th>Term</th><th>Plain meaning</th></tr>
+<tr><td>Hardening</td><td>Making a service survive bad input, crashes and misuse</td></tr>
+<tr><td>Unit economics</td><td>The money earned and spent for each unit of use, such as one request</td></tr>
+<tr><td>Gross margin</td><td>The share of revenue left after the cost of serving</td></tr>
+<tr><td>Break-even</td><td>The volume at which total revenue equals total cost</td></tr>
+<tr><td>Fixed costs</td><td>Costs you pay however much the service is used</td></tr>
+<tr><td>Limitations</td><td>An honest account of failures, data gaps and risks</td></tr>
+<tr><td>Defensibility</td><td>What makes your product hard to copy</td></tr>
+<tr><td>README</td><td>The document that tells a stranger what the project is and how to run it</td></tr>
+</table>
+
+<h2 id="pitfalls">10. Common pitfalls</h2>
+<ul>
+<li>Putting internal error details in what the user sees.</li>
+<li>Pricing from your cost instead of from the customer's value.</li>
+<li>One optimistic number instead of three scenarios.</li>
+<li>Vague limitations, or none.</li>
+<li>Starting the pitch with the model instead of the problem.</li>
+<li>A live demo that was not rehearsed, with no backup.</li>
+<li>Saying "deployed" when no stranger has used it.</li>
+</ul>
+
+<h2 id="check">11. Check yourself</h2>
+<p>Try each question first, then open the answer.</p>
+<details><summary>Question 1: A product charges 0.02 dollars per request, costs 0.004 dollars per request to serve, and has 80 dollars of fixed costs a month. How many requests a month does it need to break even?</summary><p>Profit per request = 0.02 - 0.004 = 0.016 dollars. Break-even = 80 / 0.016 = <strong>5,000 requests a month</strong>. Below that it loses money; above it, each extra request adds 1.6 cents.</p></details>
+<details><summary>Question 2: Your pitch plan adds up to 330 seconds. What do you cut, and what do you keep?</summary><p>Keep the demo: it is the part that convinces. Cut from the explanation and the detail: shorten how it works to a single picture, trim cost and market to two sentences, and drop any point that does not help the audience decide. You need to remove at least 30 seconds, then rehearse with a timer to make sure the real time matches the plan.</p></details>
+<details><summary>Question 3: A teammate wants to leave the limitations out of the report because they make the project look weak. What do you say?</summary><p>Hiding limitations is the weaker move. Readers, customers and investors find failures anyway, and when they find ones you did not mention, they stop believing everything else. Specific limitations (with numbers) show that you evaluated the work seriously, tell the reader how far to trust it, and give you your plan for what to improve next.</p></details>
+
+<h2>Next steps</h2>
+<ul>
+<li>Open the <a href="https://colab.research.google.com/github/panchadk/AIStartup/blob/main/module12_capstone_ship.ipynb" target="_blank" rel="noopener">Module 12 workbook in Colab</a> and start shipping.</li>
+<li>Back to the <a href="https://panchadk.github.io/AIStartup/module12_page.html">Module 12 page</a>.</li>
+</ul>
+<div class="nav"><a href="https://panchadk.github.io/AIStartup/module11_notes.html">&larr; Previous: Module 11 notes</a><span></span></div>
+<p style="text-align:center; margin-top:30px"><strong>You have reached the end of the course. Go and build something that matters.</strong></p>
+
+</body>
+</html>

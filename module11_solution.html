@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Module 11: Reference solution</title>
+<style>
+  :root { --navy: #1F3864; --ink: #222222; --bg: #FFFFFF; --code-bg: #F3F6FA; --warn-bg: #FFF4E5; --warn-edge: #E08A00; }
+  body { font-family: Arial, Helvetica, sans-serif; max-width: 860px; margin: 0 auto; padding: 24px; line-height: 1.6; color: var(--ink); background: var(--bg); }
+  h3 { color: var(--navy); border-bottom: 3px solid var(--navy); padding-bottom: 6px; }
+  h4 { color: var(--navy); margin-top: 28px; }
+  strong { color: var(--navy); }
+  code { font-family: Consolas, "Courier New", monospace; background: var(--code-bg); padding: 1px 4px; border-radius: 3px; }
+  pre { background: var(--code-bg); border-left: 4px solid var(--navy); padding: 14px; overflow-x: auto; border-radius: 4px; }
+  pre code { background: none; padding: 0; }
+  .banner { background: var(--warn-bg); border-left: 4px solid var(--warn-edge); padding: 12px 16px; border-radius: 4px; margin: 16px 0; }
+  @media (prefers-color-scheme: dark) {
+    :root { --navy: #8FB4F0; --ink: #E6E6E6; --bg: #14181F; --code-bg: #1E2530; --warn-bg: #3A2C12; --warn-edge: #E0A040; }
+  }
+</style>
+</head>
+<body>
+<h3>Module 11: Reference solution</h3>
+<div class="banner"><strong>Try it yourself first.</strong> Open this page only after your own honest attempt. If a self-check is failing, read its message again and compare one function at a time. Matching line for line is not required: if every self-check passes, your solution is correct.</div>
+<h4>Step 2: does the plan fit?</h4>
+<p>Only the must-have tasks have to fit, shared among the team, and the buffer is not optional: plans always run late. Exactly enough time still fits.</p>
+<pre><code>def schedule_check(plan, team_size, days_available, buffer=0.2):
+    total = sum(t[&quot;days&quot;] for t in plan)
+    must = sum(t[&quot;days&quot;] for t in plan if t[&quot;must&quot;])
+    per_person = must / team_size
+    needed = per_person * (1 + buffer)
+    return {&quot;total_days&quot;: total, &quot;must_days&quot;: must, &quot;per_person_days&quot;: per_person,
+            &quot;needed_with_buffer&quot;: needed, &quot;fits&quot;: needed &lt;= days_available, &quot;spare_days&quot;: days_available - needed}</code></pre>
+<h4>Step 3: do the interfaces fit?</h4>
+<p>Each pair of neighbours must agree on the type that passes between them, and every component must have all four fields, including one owner. The check costs nothing, and the mismatch it finds would otherwise cost a team a night before demo day.</p>
+<pre><code>def check_pipeline(components):
+    problems = []
+    for i, c in enumerate(components):
+        for key in (&quot;name&quot;, &quot;input&quot;, &quot;output&quot;, &quot;owner&quot;):
+            if not c.get(key):
+                problems.append(f&quot;Component {c.get(&#x27;name&#x27;, &#x27;#&#x27; + str(i + 1))} is missing {key!r}.&quot;)
+    for a, b in zip(components, components[1:]):
+        if a.get(&quot;output&quot;) and b.get(&quot;input&quot;) and a[&quot;output&quot;] != b[&quot;input&quot;]:
+            problems.append(f&quot;{a[&#x27;name&#x27;]} outputs {a[&#x27;output&#x27;]!r} but {b[&#x27;name&#x27;]} expects {b[&#x27;input&#x27;]!r}.&quot;)
+    return problems</code></pre>
+<h4>Step 5: the evaluation harness</h4>
+<p>The harness is generic: a prediction function, an evaluation set, and a function that scores one example from 0 to 1. A partial score (for example, the fraction of fields that are right) counts as a failure if it is below 1.0, so that the failures list shows everything that needs work. The fingerprint proves that the model and the baseline were measured on the same set.</p>
+<pre><code>def metric_fn(pred, example):
+    return 1.0 if pred == example[&quot;expected&quot;] else 0.0
+
+def run_capstone_eval(predict_fn, eval_set, metric_fn):
+    scores, failures = [], []
+    for e in eval_set:
+        pred = predict_fn(e[&quot;input&quot;])
+        s = float(metric_fn(pred, e))
+        scores.append(s)
+        if s &lt; 1.0:
+            failures.append({&quot;input&quot;: e[&quot;input&quot;], &quot;expected&quot;: e[&quot;expected&quot;], &quot;pred&quot;: pred, &quot;score&quot;: s})
+    return {&quot;n&quot;: len(eval_set), &quot;score&quot;: sum(scores) / len(scores), &quot;failures&quot;: failures, &quot;fingerprint&quot;: fingerprint_eval(eval_set)}</code></pre>
+<h4>Stretch: summarizing user tests</h4>
+<p>Counting issues across users shows which problem is most common, which is what to fix first. Completion rate matters more than satisfaction: someone who could not finish the task is not helped by being polite.</p>
+<pre><code>def summarize_user_tests(tests):
+    counts = Counter(issue for t in tests for issue in t[&quot;issues&quot;])
+    return {&quot;n&quot;: len(tests), &quot;completion_rate&quot;: sum(t[&quot;completed&quot;] for t in tests) / len(tests),
+            &quot;avg_satisfaction&quot;: sum(t[&quot;satisfaction&quot;] for t in tests) / len(tests),
+            &quot;top_issues&quot;: sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))}</code></pre>
+<h4>A sample project card (the demo project)</h4>
+<ul>
+<li><strong>Problem:</strong> small online shops get hundreds of tickets a day, and the urgent ones are found hours late.</li>
+<li><strong>User:</strong> the shop owner or support lead, through their existing helpdesk.</li>
+<li><strong>Why deep learning:</strong> keyword rules miss chat-style messages and flag polite thanks that contain the word urgent; baseline measured first.</li>
+<li><strong>Data:</strong> labeled tickets with a written guide, split with a fixed, fingerprinted evaluation set.</li>
+<li><strong>Metric and target:</strong> accuracy on a balanced evaluation set, target 0.90, against a naive keyword baseline.</li>
+<li><strong>Scope:</strong> must have a classifier, a pipeline, an evaluation against a baseline and a labeling guide; nice to have a try-it page and a per-channel breakdown; out of scope auto-replies and other languages.</li>
+</ul>
+<p>Notice how short the must-have list is, and how the out-of-scope list protects it.</p>
+
+<h4>If your model does not beat the baseline</h4>
+<p>That is a result, not a failure of the project. In order:</p>
+<ol>
+<li><strong>Is the baseline too good?</strong> If a simple rule scores nearly as high, your problem may not need deep learning. Say so honestly, and think about where the learned model would add value (harder cases, changing language, scale).</li>
+<li><strong>Is the evaluation set fair?</strong> A tiny or unrepresentative set gives noisy numbers. Check its size and where it came from.</li>
+<li><strong>Is the data the problem?</strong> Inconsistent labels or too few examples of the hard cases cap any model. Read the failures.</li>
+<li><strong>Is the model the problem?</strong> Only now try a different or larger model, or fine-tuning.</li>
+<li><strong>Is the target realistic?</strong> A target chosen before you saw any data may be wrong. Change it, but write down why.</li>
+</ol>
+
+<h4>Sample interpretation</h4>
+<blockquote>The model scores 0.98 on the balanced evaluation set against 0.46 for the naive keyword rule, and reaches the target of 0.90. The gap is large because the keyword rule misses most real urgent tickets, which seldom contain the word urgent. The evaluation set is balanced and the data is templated, so real accuracy will be lower, and the next step is to measure on a small sample of real tickets.</blockquote>
+
+<h4>Common mistakes and what they look like</h4>
+<ul>
+<li><strong>Everything is a must-have:</strong> the plan never fits, and the project is half-finished on demo day. Cut until it fits, with the buffer.</li>
+<li><strong>Building layer by layer:</strong> the model is perfect, but nothing connects to anything until the last week. Build the thin slice first.</li>
+<li><strong>Interfaces agreed in people's heads:</strong> the parts do not fit when joined. Write them down, with one owner each.</li>
+<li><strong>Inventing "real" inputs that are easy:</strong> the smoke test passes and the first real user crashes it. Use inputs as users really send them.</li>
+<li><strong>Evaluating on data the model trained on:</strong> a lovely number that means nothing. Keep a fixed, unseen set.</li>
+<li><strong>No baseline:</strong> you cannot say if 85% is good. Always compare.</li>
+<li><strong>Tuning the target to fit the result:</strong> the target must be set from what the user needs.</li>
+<li><strong>Waiting until the end to show anyone:</strong> real users find the important problems in the first hour.</li>
+</ul>
+
+<h4>What to do next</h4>
+<ul>
+<li>Complete the three-line reflection and push your workbook and results to your portfolio repo.</li>
+<li>Take the Module 11 quiz in Moodle.</li>
+<li>Module 12 is the last: you will harden it, work out the business, write the report and present it. Your "next steps" list from Step 6 is the first draft of your plan.</li>
+</ul>
+
+</body>
+</html>

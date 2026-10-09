@@ -1,0 +1,37 @@
+// Module 12 quiz - Deep Learning for AI Startups
+$CATEGORY: $course$/Module 12
+
+::M12 Q1:: What belongs in an honest limitations section? {
+~Only strengths
+~Marketing claims
+=Failure cases, data gaps, and risks#Specific failures, what the data does not cover, and what could cause harm build trust. Vague disclaimers do not.
+~The team's names
+}
+
+::M12 Q2:: What are unit economics for an AI product? {
+=Cost to serve and revenue per user or request#They tell you whether each unit of use earns more than it costs, and how many units it takes to cover your fixed costs.
+~The number of layers
+~The size of the dataset
+~The training date
+}
+
+::M12 Q3:: Which is a source of defensibility? {
+~Using a popular font
+=Proprietary data or deep workflow integration#The model itself can be copied. Your own data and your place inside customers' workflow are much harder to copy.
+~A longer prompt
+~A larger batch size
+}
+
+::M12 Q4:: Which order suits a 5-minute pitch? {
+~Team photos, then nothing else
+~Code walkthrough only
+~Cost slide only
+=Problem, demo, how it works, results, cost and market, next steps#Show the problem, then show it working, then explain it, back it with numbers, and say what comes next.
+}
+
+::M12 Q5:: Why include a README? {
+=So others can run and reproduce your work#A README explains what the project does, how to run it, and what to expect, so that a stranger can use it without asking you.
+~To increase latency
+~To train the model
+~To label the data
+}

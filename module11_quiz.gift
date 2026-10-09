@@ -1,0 +1,37 @@
+// Module 11 quiz - Deep Learning for AI Startups
+$CATEGORY: $course$/Module 11
+
+::M11 Q1:: What should the first capstone build be? {
+~Every feature at once
+=The thinnest end-to-end version#A thin version that runs from a real input to a real output shows you where the surprises are while there is still time to fix them.
+~Only the pitch slides
+~A new framework
+}
+
+::M11 Q2:: Why test with real users early? {
+~To avoid evaluation
+~To add parameters
+~To delay deployment
+=To learn what actually matters before over-investing#Real users show you which problems matter, before you spend weeks polishing the wrong thing.
+}
+
+::M11 Q3:: When is it reasonable to use a pretrained model or API? {
+=Usually, unless you have a clear reason to train your own#Pretrained models and APIs are the cheapest, fastest start. Train your own only when measurements show that you must.
+~Never
+~Only for toy projects
+~Only when you have no data
+}
+
+::M11 Q4:: In a team, what should be agreed first? {
+~Slide fonts
+~Team logo
+=Interfaces between components#If everyone agrees the inputs and outputs of each part first, the parts will fit together when they are joined.
+~The final grade
+}
+
+::M11 Q5:: What does a must-have versus nice-to-have list help with? {
+~Increasing model size
+~Removing tests
+~Avoiding users
+=Controlling scope within limited time#It protects the essential work, and decides in advance what to drop when time runs short.
+}
