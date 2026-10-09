@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Module 9 lecture notes: Dataset and evaluation harness</title>
+<style>
+  :root { --navy:#1F3864;--ink:#222222;--bg:#FFFFFF;--code-bg:#F3F6FA;--hl-bg:#FFF4E5;--accent:#D9730D;--muted:#8A94A6; --muted-text:#555555; --good:#2E7D32; }
+  body { font-family: Arial, Helvetica, sans-serif; max-width: 860px; margin: 0 auto; padding: 24px; line-height: 1.65; color: var(--ink); background: var(--bg); }
+  h1 { color: var(--navy); margin-bottom: 4px; }
+  h2 { color: var(--navy); border-bottom: 3px solid var(--navy); padding-bottom: 6px; margin-top: 40px; }
+  h3 { color: var(--navy); margin-top: 26px; }
+  strong { color: var(--navy); }
+  a { color: var(--navy); }
+  .meta { color: var(--muted-text); margin-top: 0; }
+  code { font-family: Consolas, "Courier New", monospace; background: var(--code-bg); padding: 1px 4px; border-radius: 3px; }
+  pre { background: var(--code-bg); border-left: 4px solid var(--navy); padding: 14px; overflow-x: auto; border-radius: 4px; }
+  pre code { background: none; padding: 0; }
+  .toc { background: var(--code-bg); border-radius: 6px; padding: 12px 20px; }
+  .toc ol { margin: 6px 0; }
+  .note { background: var(--hl-bg); border-left: 4px solid var(--accent); padding: 12px 16px; border-radius: 4px; margin: 18px 0; }
+  .key { background: var(--code-bg); border-left: 4px solid var(--navy); padding: 12px 16px; border-radius: 4px; margin: 18px 0; }
+  figure { margin: 26px 0; }
+  figcaption { font-size: .9em; color: var(--muted-text); text-align: center; margin-top: 6px; }
+  svg.fig { width: 100%; height: auto; max-width: 760px; display: block; margin: 0 auto; }
+  table { border-collapse: collapse; width: 100%; margin: 14px 0; }
+  th, td { border: 1px solid var(--muted); padding: 7px 10px; text-align: left; vertical-align: top; }
+  th { background: var(--code-bg); color: var(--navy); }
+  details { background: var(--code-bg); border-radius: 6px; padding: 8px 14px; margin: 10px 0; }
+  summary { cursor: pointer; font-weight: bold; color: var(--navy); }
+  .nav { display: flex; justify-content: space-between; gap: 12px; margin-top: 40px; padding-top: 14px; border-top: 1px solid var(--muted); flex-wrap: wrap; }
+
+svg .box{fill:var(--code-bg);stroke:var(--navy);stroke-width:2}
+svg .box2{fill:var(--bg);stroke:var(--navy);stroke-width:2}
+svg .hl{fill:var(--hl-bg);stroke:var(--accent);stroke-width:2}
+svg .t{fill:var(--ink);font-family:Arial,Helvetica,sans-serif;font-size:14px}
+svg .tb{font-weight:bold}
+svg .ts{font-size:12px}
+svg .tl{font-size:16px}
+svg .tn{fill:var(--navy)}
+svg .ta{fill:var(--accent)}
+svg .tm{fill:var(--muted)}
+svg .ln{stroke:var(--navy);stroke-width:2.5;fill:none}
+svg .la{stroke:var(--accent);stroke-width:2.5;fill:none}
+svg .lg{stroke:var(--muted);stroke-width:1;fill:none;opacity:.55}
+svg .ax{stroke:var(--ink);stroke-width:1.5;fill:none}
+svg .fw{stroke:var(--navy);stroke-width:2.5;fill:none}
+svg .bw{stroke:var(--accent);stroke-width:2.5;fill:none}
+svg .dash{stroke-dasharray:6 4}
+svg .mN{fill:var(--navy)}
+svg .mA{fill:var(--accent)}
+svg .dotN{fill:var(--navy)}
+svg .dotA{fill:var(--accent)}
+svg .sqN{fill:var(--navy)}
+svg .sqA{fill:var(--accent)}
+svg .sqM{fill:var(--muted)}
+svg .tbg{fill:var(--bg);font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:bold}
+svg .node{fill:var(--bg);stroke:var(--navy);stroke-width:2}
+
+  @media (prefers-color-scheme: dark) {
+    :root { --navy:#8FB4F0;--ink:#E6E6E6;--bg:#14181F;--code-bg:#1E2530;--hl-bg:#3A2C12;--accent:#F0A040;--muted:#6B778C; --muted-text:#B5BCC8; --good:#66BB6A; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Module 9: Dataset and evaluation harness</h1>
+<p class="meta">Lecture notes with diagrams. Reading time: about 25 minutes. Read once, then choose your task and start the notebook. Come back here when a self-check fails or a number surprises you.</p>
+
+<div class="toc"><strong>In these notes</strong>
+<ol>
+<li><a href="#big">The big picture</a></li>
+<li><a href="#collect">Collecting data</a></li>
+<li><a href="#label">Labeling and the labeling guide</a></li>
+<li><a href="#agree">Do the labelers agree?</a></li>
+<li><a href="#split">The fixed test set</a></li>
+<li><a href="#metrics">Metrics that tell the truth</a></li>
+<li><a href="#harness">The evaluation harness</a></li>
+<li><a href="#slices">Slices and bias</a></li>
+<li><a href="#fail">Failure analysis</a></li>
+<li><a href="#terms">Key terms</a>, <a href="#pitfalls">pitfalls</a>, and <a href="#check">check yourself</a></li>
+</ol></div>
+
+<h2 id="big">1. The big picture</h2>
+<p>Teams that build AI products learn the same lesson again and again: <strong>the data and the test matter more than the model</strong>. A better architecture rarely rescues messy labels or a misleading evaluation. A good dataset and an honest test make every model decision easier, and they stay valuable when you change models.</p>
+<figure>
+<svg class="fig" viewBox="0 0 760 295" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The data and evaluation loop: collect, label, split, train, evaluate, analyze, and repeat"><defs><marker id="aN91" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA91" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><rect x="20" y="20" width="220" height="64" rx="8" class="box"/><text x="130.0" y="48.0" class="t tb" text-anchor="middle" >1 Collect</text><text x="130.0" y="66.0" class="t ts" text-anchor="middle" >real, varied inputs</text><rect x="270" y="20" width="220" height="64" rx="8" class="box"/><text x="380.0" y="48.0" class="t tb" text-anchor="middle" >2 Label</text><text x="380.0" y="66.0" class="t ts" text-anchor="middle" >with a written guide</text><rect x="520" y="20" width="220" height="64" rx="8" class="box"/><text x="630.0" y="48.0" class="t tb" text-anchor="middle" >3 Split</text><text x="630.0" y="66.0" class="t ts" text-anchor="middle" >fix the test set</text><rect x="520" y="150" width="220" height="64" rx="8" class="box"/><text x="630.0" y="178.0" class="t tb" text-anchor="middle" >4 Train</text><text x="630.0" y="196.0" class="t ts" text-anchor="middle" >on the train set only</text><rect x="270" y="150" width="220" height="64" rx="8" class="hl"/><text x="380.0" y="178.0" class="t tb" text-anchor="middle" >5 Evaluate</text><text x="380.0" y="196.0" class="t ts" text-anchor="middle" >one command, one report</text><rect x="20" y="150" width="220" height="64" rx="8" class="box"/><text x="130.0" y="178.0" class="t tb" text-anchor="middle" >6 Analyze</text><text x="130.0" y="196.0" class="t ts" text-anchor="middle" >failures and slices</text><line x1="240" y1="52" x2="268" y2="52" class="fw" marker-end="url(#aN91)"/><line x1="490" y1="52" x2="518" y2="52" class="fw" marker-end="url(#aN91)"/><line x1="630" y1="84" x2="630" y2="148" class="fw" marker-end="url(#aN91)"/><line x1="518" y1="182" x2="492" y2="182" class="fw" marker-end="url(#aN91)"/><line x1="268" y1="182" x2="242" y2="182" class="fw" marker-end="url(#aN91)"/><path d="M130,150 V90" class="bw" marker-end="url(#aA91)"/><text x="190" y="120" class="t ts ta" text-anchor="start" >fix the DATA</text><text x="190" y="136" class="t ts ta" text-anchor="start" >or the model</text><text x="380" y="250" class="t tb" text-anchor="middle" >The loop is the product: each lap makes the data, the test and the model better.</text><text x="380" y="274" class="t ts" text-anchor="middle" >Steps 1 and 2 decide most of the quality; the test set in step 3 must never change.</text></svg>
+<figcaption>The loop you will run in this module. Each lap improves the data, the test, or the model, and the evaluation step is what tells you which.</figcaption>
+</figure>
+
+<h2 id="collect">2. Collecting data</h2>
+<ul>
+<li><strong>Look like the real thing.</strong> Collect examples from where your product will actually be used, not from the most convenient place. A model trained on tidy examples fails on real, messy ones.</li>
+<li><strong>Cover the variety:</strong> short and long, polite and angry, typos, different channels, different customer types.</li>
+<li><strong>Include the rare cases.</strong> If the important class is 5% of the world, you still need enough examples of it to learn from and to test on. Sometimes you collect more of the rare class on purpose, and remember that this changes the proportions.</li>
+<li><strong>Look at the data.</strong> Read a few hundred examples yourself. You will find duplicates, empty rows, strange items and labels you disagree with.</li>
+<li><strong>Respect privacy.</strong> Remove or avoid personal data you do not need.</li>
+</ul>
+
+<h2 id="label">3. Labeling and the labeling guide</h2>
+<p>A label is a decision, and decisions need rules. Without written rules, two people (or the same person on two days) will label the same item differently, and the model will learn the noise.</p>
+<figure>
+<svg class="fig" viewBox="0 0 760 355" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Parts of a labeling guide: definitions, examples, edge cases and a tie-break rule"><defs><marker id="aN92" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA92" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><text x="380" y="20" class="t tb tn" text-anchor="middle" >A labeling guide is a contract between labelers</text><rect x="10" y="42" width="190" height="62" rx="8" class="box"/><text x="105.0" y="69.0" class="t tb" text-anchor="middle" >Definition</text><text x="105.0" y="87.0" class="t ts" text-anchor="middle" >what the label means</text><rect x="212" y="42" width="538" height="62" rx="8" class="box2"/><text x="226" y="78" class="t ts" text-anchor="start" >urgent: the customer cannot work, or is losing money or data, right now</text><rect x="10" y="120" width="190" height="62" rx="8" class="box"/><text x="105.0" y="147.0" class="t tb" text-anchor="middle" >Examples</text><text x="105.0" y="165.0" class="t ts" text-anchor="middle" >clear cases of each label</text><rect x="212" y="120" width="538" height="62" rx="8" class="box2"/><text x="226" y="156" class="t ts" text-anchor="start" >'the whole site is down'  -&gt;  urgent     'how do I change my address'  -&gt;  normal</text><rect x="10" y="198" width="190" height="62" rx="8" class="hl"/><text x="105.0" y="225.0" class="t tb" text-anchor="middle" >Edge cases</text><text x="105.0" y="243.0" class="t ts" text-anchor="middle" >the tricky and borderline ones</text><rect x="212" y="198" width="538" height="62" rx="8" class="box2"/><text x="226" y="234" class="t ts" text-anchor="start" >'this is not urgent'  -&gt;  normal      'the page crashed twice'  -&gt;  urgent only if work is blocked</text><rect x="10" y="276" width="190" height="62" rx="8" class="box"/><text x="105.0" y="303.0" class="t tb" text-anchor="middle" >Tie-break rule</text><text x="105.0" y="321.0" class="t ts" text-anchor="middle" >who decides, and then what</text><rect x="212" y="276" width="538" height="62" rx="8" class="box2"/><text x="226" y="312" class="t ts" text-anchor="start" >disagreements go to the lead; the guide is updated with the new rule</text></svg>
+<figcaption>The four parts of a guide. The edge cases are where most of the value is.</figcaption>
+</figure>
+<ul>
+<li><strong>Define every label</strong> in terms of the situation, not keywords. "Urgent" means a customer who cannot work, not a message that contains the word "urgent".</li>
+<li><strong>Give examples</strong> of each label, including some that are not obvious.</li>
+<li><strong>Write down the edge cases</strong> as you find them, with the rule that decides them.</li>
+<li><strong>Have a tie-break:</strong> who decides when labelers disagree, and how the guide is updated afterwards.</li>
+<li><strong>Keep the guide in version control</strong> with the data. A label means nothing without the guide that defines it.</li>
+</ul>
+
+<h2 id="agree">4. Do the labelers agree?</h2>
+<p>Ask a second person to label the same 50 to 100 items. If they often disagree with you, the guide is unclear, and no model can be reliably better than the labels it learns from and is tested on.</p>
+<p>Raw agreement flatters. If 95% of items are normal, two people who always say "normal" agree 95% of the time without doing anything. <strong>Cohen's kappa</strong> corrects for agreement by chance:</p>
+<pre><code>kappa = (observed agreement - chance agreement) / (1 - chance agreement)
+
+Example: two labelers, labels y/n.  A says y, y, n, n.  B says y, n, n, n.
+  observed agreement = 3 of 4 = 0.75
+  chance agreement   = (0.5 x 0.25) + (0.5 x 0.75) = 0.5
+  kappa              = (0.75 - 0.5) / (1 - 0.5) = 0.5</code></pre>
+<p>A rough guide: above 0.8 is very good, 0.6 to 0.8 is good, and below 0.4 means that the guide needs work. Read the disagreements: they show you exactly which rule is missing.</p>
+
+<h2 id="split">5. The fixed test set</h2>
+<p>You split the data into three parts, as in Module 3: <strong>train</strong> (the model learns from it), <strong>validation</strong> (you make decisions with it), and <strong>test</strong> (the final exam). Two extra rules for a product team:</p>
+<ul>
+<li><strong>Stratify</strong> the split so that every part has the same proportion of each label. With a rare class, a random split could leave the test set with almost none of it.</li>
+<li><strong>Freeze the test set.</strong> Never train on it, never tune on it, never fix labels in it quietly. Then scores from last month and today are comparable. A <strong>fingerprint</strong> (a short code computed from the content) lets you prove it has not changed: the same fingerprint in two reports means the same test set.</li>
+</ul>
+<p>Clean <em>before</em> you split: remove empty items and exact duplicates, or a copy of a training example in the test set will flatter your score.</p>
+
+<h2 id="metrics">6. Metrics that tell the truth</h2>
+<p>Suppose 12% of your tickets are urgent. A "model" that always answers normal is 88% accurate and completely useless. Accuracy rewards doing nothing when one class dominates.</p>
+<figure>
+<svg class="fig" viewBox="0 0 760 295" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Accuracy of a model that always predicts normal is 88 percent, but its recall of urgent tickets is zero"><defs><marker id="aN93" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA93" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><text x="380" y="20" class="t tb tn" text-anchor="middle" >Same data: 1,000 tickets, 120 of them urgent (12%)</text><text x="250" y="52" class="t ts tb" text-anchor="middle" >accuracy</text><text x="560" y="52" class="t ts tb" text-anchor="middle" >recall of the urgent class</text><text x="10" y="92" class="t ts tb" text-anchor="start" >Always says normal</text><rect x="170" y="70" width="140.8" height="30" rx="3" class="sqN"/><text x="316.8" y="91" class="t ts tb" text-anchor="start" >88%</text><rect x="480" y="70" width="2.0" height="30" rx="3" class="sqA"/><text x="488.0" y="91" class="t ts tb" text-anchor="start" >0%</text><text x="10" y="154" class="t ts tb" text-anchor="start" >Our baseline model</text><rect x="170" y="132" width="152.6" height="30" rx="3" class="sqN"/><text x="328.64" y="153" class="t ts tb" text-anchor="start" >95%</text><rect x="480" y="132" width="124.0" height="30" rx="3" class="sqA"/><text x="610.0" y="153" class="t ts tb" text-anchor="start" >61%</text><text x="10" y="216" class="t ts tb" text-anchor="start" >With the fix</text><rect x="170" y="194" width="157.3" height="30" rx="3" class="sqN"/><text x="333.28" y="215" class="t ts tb" text-anchor="start" >98%</text><rect x="480" y="194" width="202.0" height="30" rx="3" class="sqA"/><text x="688.0" y="215" class="t ts tb" text-anchor="start" >100%</text><text x="380" y="275" class="t tb" text-anchor="middle" >Accuracy rewards doing nothing. For a rare class that matters, watch recall (and precision).</text></svg>
+<figcaption>Accuracy goes up a little while the recall of the class you care about changes enormously.</figcaption>
+</figure>
+<p>To see what really happens, count the four kinds of outcome for the class you care about (the <strong>positive</strong> class):</p>
+<figure>
+<svg class="fig" viewBox="0 0 760 310" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Confusion matrix with true positives, false negatives, false positives, true negatives and the formulas for precision, recall and F1"><defs><marker id="aN94" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA94" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><text x="346" y="24" class="t tb tn" text-anchor="middle" >model says</text><text x="298.0" y="60" class="t ts" text-anchor="middle" >urgent</text><text x="394.0" y="60" class="t ts" text-anchor="middle" >normal</text><text x="170" y="166" class="t tb tn" text-anchor="middle" transform="rotate(-90 170 166)">truth</text><text x="242" y="122.0" class="t ts" text-anchor="end" >urgent</text><text x="242" y="218.0" class="t ts" text-anchor="end" >normal</text><rect x="250" y="70" width="92" height="92" rx="6" class="sqN" style="opacity:1.0"/><text x="296.0" y="110" class="tbg" text-anchor="middle" >TP</text><text x="296.0" y="130" class="tbg" text-anchor="middle" >caught it</text><rect x="346" y="70" width="92" height="92" rx="6" class="sqA" style="opacity:1.0"/><text x="392.0" y="110" class="tbg" text-anchor="middle" >FN</text><text x="392.0" y="130" class="tbg" text-anchor="middle" >missed it</text><rect x="250" y="166" width="92" height="92" rx="6" class="sqM" style="opacity:0.5"/><text x="296.0" y="206" class="t tb" text-anchor="middle" >FP</text><text x="296.0" y="226" class="t ts" text-anchor="middle" >false alarm</text><rect x="346" y="166" width="92" height="92" rx="6" class="sqM" style="opacity:0.5"/><text x="392.0" y="206" class="t tb" text-anchor="middle" >TN</text><text x="392.0" y="226" class="t ts" text-anchor="middle" >correct, quiet</text><text x="490" y="100" class="t tb" text-anchor="start" >precision = TP / (TP + FP)</text><text x="490" y="120" class="t ts tm" text-anchor="start" >when it says urgent, how often is it right?</text><text x="490" y="166" class="t tb" text-anchor="start" >recall = TP / (TP + FN)</text><text x="490" y="186" class="t ts tm" text-anchor="start" >of all the real urgent ones, how many did it find?</text><text x="490" y="232" class="t tb" text-anchor="start" >F1 = 2 x P x R / (P + R)</text><text x="490" y="252" class="t ts tm" text-anchor="start" >one number that needs both to be good</text><text x="380" y="290" class="t ts tb" text-anchor="middle" >Missing an urgent ticket (FN) and crying wolf (FP) are different mistakes with different costs.</text></svg>
+<figcaption>The confusion matrix and the three metrics built from it.</figcaption>
+</figure>
+<ul>
+<li><strong>Precision:</strong> when the model says urgent, how often is it right? It falls when there are many false alarms.</li>
+<li><strong>Recall:</strong> of all the really urgent tickets, how many did it find? It falls when urgent tickets are missed.</li>
+<li><strong>F1</strong> combines the two (their harmonic mean), so a model cannot hide a bad one behind a good one.</li>
+</ul>
+<div class="key"><strong>Choose the metric by the cost of the mistake.</strong> Missing an urgent ticket, a fraud case or a defective part is expensive: watch recall. Blocking a legitimate customer or interrupting a person is expensive: watch precision. This is a business question first and a modelling question second. Many products set a minimum for one and optimize the other.</div>
+<p>Always show the <strong>majority baseline</strong> next to the accuracy. A number means little until you know what doing nothing would score.</p>
+
+<h2 id="harness">7. The evaluation harness</h2>
+<p>An <strong>evaluation harness</strong> is the code that runs a model on the test set and produces a report, <strong>the same way every time, with no manual steps</strong>. In this module it is one function, <code>run_eval(predict_fn, test_set, positive)</code>.</p>
+<ul>
+<li><strong>It takes a predict function</strong>, so any model (a classifier, a prompt, a fine-tuned model) can be plugged in and compared fairly.</li>
+<li><strong>It returns a report</strong>: the metrics, the baseline, the slices, the list of failures, and the test set fingerprint.</li>
+<li><strong>It is glue code</strong>, written once from small, tested pieces. When you change models, you do not rewrite it.</li>
+<li><strong>Save the reports</strong> with a date and the fingerprint. They are your history: how the product got better, and proof for a customer or an investor.</li>
+</ul>
+
+<h2 id="slices">8. Slices and bias</h2>
+<p>An average can hide unequal treatment. A <strong>slice</strong> is a group of inputs that you evaluate separately: a language, a region, a device, a channel, a customer type, short versus long text.</p>
+<figure>
+<svg class="fig" viewBox="0 0 760 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Recall of urgent tickets is 92 percent for email but only 38 percent for chat, while the overall figure is 61 percent"><defs><marker id="aN95" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA95" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><text x="380" y="20" class="t tb tn" text-anchor="middle" >One average hides a big gap between groups (demo task, recall of urgent tickets)</text><line x1="120" y1="230" x2="640" y2="230" class="ax"/><rect x="190" y="73.6" width="90" height="156.4" rx="4" class="sqN"/><text x="235" y="65.6" class="t tb" text-anchor="middle" >92%</text><text x="235" y="250" class="t ts tb" text-anchor="middle" >email</text><rect x="420" y="165.4" width="90" height="64.6" rx="4" class="sqA"/><text x="465" y="157.4" class="t tb" text-anchor="middle" >38%</text><text x="465" y="250" class="t ts tb" text-anchor="middle" >chat</text><line x1="120" y1="126.3" x2="640" y2="126.3" class="la dash"/><text x="640" y="120.3" class="t ts ta" text-anchor="end" >overall recall 61%</text><text x="380" y="282" class="t ts" text-anchor="middle" >Chat messages are short, lowercase and fragmentary, and there are fewer of them in the training data.</text><text x="380" y="302" class="t ts tb" text-anchor="middle" >The overall number looks acceptable. The slice shows who is being failed.</text></svg>
+<figcaption>The overall recall looks acceptable. By channel, one group is being failed.</figcaption>
+</figure>
+<p>Gaps arise for ordinary reasons: a group has fewer training examples, its inputs look different (short, informal, another dialect), or its labels were noisier. They matter because real users sit in those groups. Check the slices that matter for your product, and ask who is hurt when the model fails. Then fix it with more and better data for that group, better features, or a separate threshold, and measure again.</p>
+
+<h2 id="fail">9. Failure analysis</h2>
+<p>The metrics say <em>how much</em> the model fails. <strong>Failure analysis</strong> says <em>why</em>:</p>
+<ol>
+<li>Collect the failures (on the <strong>validation</strong> set, so that the test set stays untouched).</li>
+<li>Read them. Look for patterns in the input: very short, negation, a topic, a style, a rare word, a wrong label.</li>
+<li>Write a rule for each pattern and <strong>count</strong> the failures per category.</li>
+<li>Fix the <strong>largest</strong> category first.</li>
+</ol>
+<figure>
+<svg class="fig" viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Failure analysis chart: eight of eleven failures are short chat-style messages"><defs><marker id="aN96" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA96" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><text x="380" y="20" class="t tb tn" text-anchor="middle" >Failure analysis: count the causes, fix the biggest first (11 failures)</text><text x="10" y="72" class="t ts tb" text-anchor="start" >short chat-style message</text><rect x="230" y="50" width="320" height="32" rx="3" class="sqA"/><text x="558" y="72" class="t tb" text-anchor="start" >8</text><text x="10" y="126" class="t ts tb" text-anchor="start" >mentions payment or login</text><rect x="230" y="104" width="80" height="32" rx="3" class="sqN"/><text x="318" y="126" class="t tb" text-anchor="start" >2</text><text x="10" y="180" class="t ts tb" text-anchor="start" >other</text><rect x="230" y="158" width="40" height="32" rx="3" class="sqM"/><text x="278" y="180" class="t tb" text-anchor="start" >1</text><rect x="10" y="220" width="360" height="62" rx="8" class="hl"/><text x="190.0" y="247.0" class="t tb" text-anchor="middle" >Biggest category: 8 of 11</text><text x="190.0" y="265.0" class="t ts" text-anchor="middle" >Fix: class weights, more chat examples</text><rect x="390" y="220" width="360" height="62" rx="8" class="box2"/><text x="570.0" y="247.0" class="t tb" text-anchor="middle" >After the fix: measure on the SAME test set</text><text x="570.0" y="265.0" class="t ts" text-anchor="middle" >compare precision, recall and F1, not just accuracy</text></svg>
+<figcaption>Counting turns a pile of errors into a plan. Here one category explains most of the failures.</figcaption>
+</figure>
+<p>Fixes come in two families. <strong>Data fixes</strong> (more examples of the failing pattern, cleaner labels, better coverage) are usually cheaper and more durable than <strong>model fixes</strong> (class weights, a different model, extra features). After any fix, measure on the <strong>same</strong> test set and report the change in precision and recall, not just accuracy. An honest "it did not help" is a useful result: it tells you where not to spend next week.</p>
+
+<h2 id="terms">10. Key terms</h2>
+<table>
+<tr><th>Term</th><th>Plain meaning</th></tr>
+<tr><td>Labeling guide</td><td>Written rules that make labels consistent</td></tr>
+<tr><td>Inter-annotator agreement</td><td>How often independent labelers give the same label</td></tr>
+<tr><td>Cohen's kappa</td><td>Agreement corrected for what chance alone would give</td></tr>
+<tr><td>Class imbalance</td><td>One label much rarer than the others</td></tr>
+<tr><td>Majority baseline</td><td>The accuracy of always predicting the most common label</td></tr>
+<tr><td>Precision / recall</td><td>How right the positive predictions are / how many real positives are found</td></tr>
+<tr><td>F1</td><td>One number that combines precision and recall</td></tr>
+<tr><td>Slice</td><td>A group of inputs evaluated separately</td></tr>
+<tr><td>Evaluation harness</td><td>Code that runs a model on a fixed test set and reports the same way every time</td></tr>
+<tr><td>Fingerprint</td><td>A short code that changes if the test set changes</td></tr>
+</table>
+
+<h2 id="pitfalls">11. Common pitfalls</h2>
+<ul>
+<li>Reporting accuracy without the majority baseline.</li>
+<li>Labels with no written guide, so that nobody agrees with anybody.</li>
+<li>Duplicates or near-duplicates across the train and test sets.</li>
+<li>Tuning on the test set, or changing it between reports.</li>
+<li>Looking only at averages and never at slices.</li>
+<li>Analyzing failures without counting them, then fixing the loudest one rather than the biggest.</li>
+<li>Judging a fix by accuracy alone.</li>
+</ul>
+
+<h2 id="check">12. Check yourself</h2>
+<p>Try each question first, then open the answer.</p>
+<details><summary>Question 1: A dataset has 1,000 items and only 20 are positive. A model predicts negative for every item. What are its accuracy and its recall?</summary><p>Accuracy is 980 / 1,000 = <strong>98%</strong>. Recall is 0 / 20 = <strong>0%</strong>, because it finds none of the positives. This is why you should never trust accuracy alone on imbalanced data.</p></details>
+<details><summary>Question 2: A model finds 45 of the 60 really urgent tickets and also wrongly flags 15 normal tickets as urgent. What are its precision, recall and F1?</summary><p>TP = 45, FN = 15, FP = 15. Precision = 45 / (45 + 15) = <strong>0.75</strong>. Recall = 45 / (45 + 15) = <strong>0.75</strong>. F1 = 2 x 0.75 x 0.75 / 1.5 = <strong>0.75</strong>.</p></details>
+<details><summary>Question 3: Two labelers agree on 90% of the items, and chance agreement is 50%. What is Cohen's kappa, and what does it tell you?</summary><p>kappa = (0.90 - 0.50) / (1 - 0.50) = <strong>0.80</strong>. That is very good agreement: the guide is clear enough, and the labels are a solid basis for training and testing.</p></details>
+
+<h2>Next steps</h2>
+<ul>
+<li>Open the <a href="https://colab.research.google.com/github/panchadk/AIStartup/blob/main/module9_dataset_and_eval.ipynb" target="_blank" rel="noopener">Module 9 notebook in Colab</a> and start building.</li>
+<li>Back to the <a href="https://panchadk.github.io/AIStartup/module9_page.html">Module 9 page</a>.</li>
+</ul>
+<div class="nav"><a href="https://panchadk.github.io/AIStartup/module8_notes.html">&larr; Previous: Module 8 notes</a><a href="https://panchadk.github.io/AIStartup/module10_notes.html">Next: Module 10 notes, Deploy and measure &rarr;</a></div>
+
+</body>
+</html>

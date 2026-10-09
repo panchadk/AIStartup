@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Module 9: Reference solution</title>
+<style>
+  :root { --navy: #1F3864; --ink: #222222; --bg: #FFFFFF; --code-bg: #F3F6FA; --warn-bg: #FFF4E5; --warn-edge: #E08A00; }
+  body { font-family: Arial, Helvetica, sans-serif; max-width: 860px; margin: 0 auto; padding: 24px; line-height: 1.6; color: var(--ink); background: var(--bg); }
+  h3 { color: var(--navy); border-bottom: 3px solid var(--navy); padding-bottom: 6px; }
+  h4 { color: var(--navy); margin-top: 28px; }
+  strong { color: var(--navy); }
+  code { font-family: Consolas, "Courier New", monospace; background: var(--code-bg); padding: 1px 4px; border-radius: 3px; }
+  pre { background: var(--code-bg); border-left: 4px solid var(--navy); padding: 14px; overflow-x: auto; border-radius: 4px; }
+  pre code { background: none; padding: 0; }
+  .banner { background: var(--warn-bg); border-left: 4px solid var(--warn-edge); padding: 12px 16px; border-radius: 4px; margin: 16px 0; }
+  @media (prefers-color-scheme: dark) {
+    :root { --navy: #8FB4F0; --ink: #E6E6E6; --bg: #14181F; --code-bg: #1E2530; --warn-bg: #3A2C12; --warn-edge: #E0A040; }
+  }
+</style>
+</head>
+<body>
+<h3>Module 9: Reference solution</h3>
+<div class="banner"><strong>Try it yourself first.</strong> Open this page only after your own honest attempt. If a self-check is failing, read its message again and compare one function at a time. Matching line for line is not required: if every self-check passes, your solution is correct.</div>
+<h4>Step 2: the data quality report</h4>
+<p>Strip each text before comparing, so that <code>"a"</code> and <code>"a "</code> count as duplicates. Duplicates matter because a copy in the test set that also sits in the training set inflates the score.</p>
+<pre><code>def data_quality_report(examples):
+    labels = [e[&quot;label&quot;] for e in examples]
+    counts = dict(Counter(labels))
+    texts = [e[&quot;text&quot;].strip() for e in examples]
+    seen, dups = set(), 0
+    for t in texts:
+        if t in seen:
+            dups += 1
+        seen.add(t)
+    return {&quot;n&quot;: len(examples), &quot;label_counts&quot;: counts, &quot;imbalance_ratio&quot;: max(counts.values()) / min(counts.values()),
+            &quot;n_duplicates&quot;: dups, &quot;n_empty&quot;: sum(1 for t in texts if not t)}</code></pre>
+<h4>Step 4: metrics from scratch</h4>
+<p>The four cells of the confusion matrix are the foundation. Everything else is arithmetic on them. Guard every division: a model that never predicts the positive class has no precision to speak of, and the answer is 0.0, not an error.</p>
+<pre><code>def accuracy(y_true, y_pred):
+    return sum(t == p for t, p in zip(y_true, y_pred)) / len(y_true)
+
+def majority_baseline(y_true):
+    return max(Counter(y_true).values()) / len(y_true)
+
+def confusion_counts(y_true, y_pred, positive):
+    tp = sum(t == positive and p == positive for t, p in zip(y_true, y_pred))
+    fp = sum(t != positive and p == positive for t, p in zip(y_true, y_pred))
+    fn = sum(t == positive and p != positive for t, p in zip(y_true, y_pred))
+    tn = sum(t != positive and p != positive for t, p in zip(y_true, y_pred))
+    return tp, fp, fn, tn
+
+def precision_recall_f1(tp, fp, fn):
+    p = tp / (tp + fp) if tp + fp else 0.0
+    r = tp / (tp + fn) if tp + fn else 0.0
+    f1 = 2 * p * r / (p + r) if p + r else 0.0
+    return p, r, f1</code></pre>
+<h4>Step 5: slices and the harness</h4>
+<p><code>slice_metrics</code> is the same arithmetic inside each group. <code>run_eval</code> only calls the pieces you already wrote, which is the point: a harness is glue code, written once and run every time. Putting the test set fingerprint in the report lets anyone check that two reports are comparable.</p>
+<pre><code>def slice_metrics(examples, y_pred, key, positive):
+    groups = {}
+    for e, p in zip(examples, y_pred):
+        groups.setdefault(e[key], []).append((e[&quot;label&quot;], p))
+    out = {}
+    for g, pairs in groups.items():
+        t, p = [a for a, _ in pairs], [b for _, b in pairs]
+        tp, fp, fn, tn = confusion_counts(t, p, positive)
+        pr, re_, _ = precision_recall_f1(tp, fp, fn)
+        out[g] = {&quot;n&quot;: len(pairs), &quot;precision&quot;: pr, &quot;recall&quot;: re_}
+    return out
+
+def run_eval(predict_fn, test_set, positive, slice_key=None):
+    preds = [predict_fn(e[&quot;text&quot;]) for e in test_set]
+    y = [e[&quot;label&quot;] for e in test_set]
+    tp, fp, fn, tn = confusion_counts(y, preds, positive)
+    p, r, f1 = precision_recall_f1(tp, fp, fn)
+    return {&quot;n&quot;: len(y), &quot;accuracy&quot;: accuracy(y, preds), &quot;majority_baseline&quot;: majority_baseline(y),
+            &quot;tp&quot;: tp, &quot;fp&quot;: fp, &quot;fn&quot;: fn, &quot;tn&quot;: tn, &quot;precision&quot;: p, &quot;recall&quot;: r, &quot;f1&quot;: f1,
+            &quot;slices&quot;: slice_metrics(test_set, preds, slice_key, positive) if slice_key else {},
+            &quot;failures&quot;: [{&quot;text&quot;: e[&quot;text&quot;], &quot;label&quot;: e[&quot;label&quot;], &quot;pred&quot;: pr} for e, pr in zip(test_set, preds) if e[&quot;label&quot;] != pr],
+            &quot;test_fingerprint&quot;: fingerprint(test_set)}</code></pre>
+<h4>Step 7: failure analysis</h4>
+<p>Each failure goes into exactly one category, so that the counts add up and you can see the biggest one. Putting the specific rules first and "other" last means that a failure is explained by the most specific pattern that matches it.</p>
+<pre><code>def failure_breakdown(failures, rules):
+    counts = Counter()
+    for f in failures:
+        tag = &quot;other&quot;
+        for name, rule in rules.items():
+            if rule(f[&quot;text&quot;]):
+                tag = name
+                break
+        counts[tag] += 1
+    return sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
+
+# example rules for the demo task
+rules = {&quot;short chat-style message&quot;: lambda t: len(t.split()) &lt;= 6 and t == t.lower(),
+         &quot;mentions payment or login&quot;: lambda t: any(w in t.lower() for w in (&quot;payment&quot;, &quot;login&quot;, &quot;log in&quot;)),
+         &quot;mentions a crash or error&quot;: lambda t: any(w in t.lower() for w in (&quot;crash&quot;, &quot;error&quot;, &quot;down&quot;, &quot;fails&quot;))}</code></pre>
+<h4>Stretch: Cohen's kappa</h4>
+<p>Raw agreement flatters: if 95% of items are normal, two labelers who always say normal agree 95% of the time. Kappa subtracts the agreement you would expect by luck.</p>
+<pre><code>def cohens_kappa(a, b):
+    n = len(a)
+    po = sum(x == y for x, y in zip(a, b)) / n
+    pe = sum((a.count(l) / n) * (b.count(l) / n) for l in set(a) | set(b))
+    return 1.0 if pe == 1 else (po - pe) / (1 - pe)</code></pre>
+<h4>A sample labeling guide (demo task)</h4>
+<pre><code>urgent: the customer cannot work, or is losing money or data, or security is at risk, right now.
+   Examples: "our whole site is down", "someone hacked my account".
+normal: everything else: questions, thanks, suggestions, problems that can wait.
+   Examples: "how do I change my billing address", "thanks for the quick reply".
+Edge cases and rules:
+ - A message that says "urgent" but is only thanks or a joke is NORMAL: judge the situation, not the word.
+ - "This is not urgent" is NORMAL, even if it mentions login or payment.
+ - A problem affecting one user or happening sometimes is urgent only if work is blocked.
+ - When two labelers disagree, the lead decides and the guide gets the new rule.</code></pre>
+
+<h4>Sample answers to the written questions</h4>
+<ul>
+<li><strong>Imbalance and accuracy:</strong> in the demo about 12% of the tickets are urgent, so a model that always says normal is about 88% accurate. That is the bar to beat, and a model that is 95% accurate with a recall of 61% is much less impressive than it looks: it misses four of every ten urgent tickets.</li>
+<li><strong>Precision versus recall:</strong> care about <em>recall</em> when a miss is expensive (an urgent ticket left unanswered, a fraud case missed, a defective part shipped). Care about <em>precision</em> when a false alarm is expensive (a legitimate customer blocked, a person interrupted, a costly manual review).</li>
+<li><strong>Slices:</strong> in the demo the recall for chat messages is far lower than for email. Plausible causes: chat messages are short and lowercase, they are fewer in the training data, and a bag of words has less to work with in a short message. Remedies: more chat examples, features that suit short text, or a separate threshold per channel. For your own task also check language, region, length, device and customer type, and always ask who is hurt when the model fails.</li>
+<li><strong>Conclusion on the fix:</strong> class weights raise recall by making a missed rare example cost more. The price is usually lower precision (more false alarms). Whether that is worth it depends on the relative cost of the two mistakes, which is a business decision and not a modelling one. Say what you measured, on the same test set, and what you would do next.</li>
+<li><strong>Disagreements between labelers:</strong> they cluster on borderline items (a problem that happens sometimes, a mild error). The fix is a written rule in the guide for exactly those cases, then relabeling the items that the rule touches.</li>
+</ul>
+
+<h4>Common mistakes and what they look like</h4>
+<ul>
+<li><strong>Reporting accuracy only:</strong> a high number that hides a model that finds nothing. Always put the majority baseline beside it.</li>
+<li><strong>Tuning on the test set:</strong> the final score is no longer honest. Use the validation set for analysis and the test set once, at the end.</li>
+<li><strong>Duplicates across splits:</strong> inflated scores. Clean first, then split.</li>
+<li><strong>Dividing by zero in precision or recall:</strong> a crash on the model that predicts no positives. Return 0.0.</li>
+<li><strong>Changing the test set between reports:</strong> the comparison is unfair. The fingerprint catches it.</li>
+<li><strong>Looking only at the average:</strong> a group can be failed completely while the overall number looks fine.</li>
+<li><strong>Vague failure categories ("model got it wrong"):</strong> they give no direction. Categories should name a pattern in the input.</li>
+<li><strong>Fixing the small category first:</strong> effort with little effect. Sort by count.</li>
+<li><strong>A labeling guide with no edge cases:</strong> labelers invent their own rules, and agreement drops.</li>
+</ul>
+
+<h4>What to do next</h4>
+<ul>
+<li>Complete the three-line reflection and push your notebook, reports and labeling guide to your portfolio repo.</li>
+<li>Take the Module 9 quiz in Moodle.</li>
+<li>Module 10 turns a model into a service: you will serve it behind an API and a web page, and measure its speed and cost.</li>
+</ul>
+
+</body>
+</html>

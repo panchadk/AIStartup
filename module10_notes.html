@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Module 10 lecture notes: Deploy and measure</title>
+<style>
+  :root { --navy:#1F3864;--ink:#222222;--bg:#FFFFFF;--code-bg:#F3F6FA;--hl-bg:#FFF4E5;--accent:#D9730D;--muted:#8A94A6; --muted-text:#555555; --good:#2E7D32; }
+  body { font-family: Arial, Helvetica, sans-serif; max-width: 860px; margin: 0 auto; padding: 24px; line-height: 1.65; color: var(--ink); background: var(--bg); }
+  h1 { color: var(--navy); margin-bottom: 4px; }
+  h2 { color: var(--navy); border-bottom: 3px solid var(--navy); padding-bottom: 6px; margin-top: 40px; }
+  h3 { color: var(--navy); margin-top: 26px; }
+  strong { color: var(--navy); }
+  a { color: var(--navy); }
+  .meta { color: var(--muted-text); margin-top: 0; }
+  code { font-family: Consolas, "Courier New", monospace; background: var(--code-bg); padding: 1px 4px; border-radius: 3px; }
+  pre { background: var(--code-bg); border-left: 4px solid var(--navy); padding: 14px; overflow-x: auto; border-radius: 4px; }
+  pre code { background: none; padding: 0; }
+  .toc { background: var(--code-bg); border-radius: 6px; padding: 12px 20px; }
+  .toc ol { margin: 6px 0; }
+  .note { background: var(--hl-bg); border-left: 4px solid var(--accent); padding: 12px 16px; border-radius: 4px; margin: 18px 0; }
+  .key { background: var(--code-bg); border-left: 4px solid var(--navy); padding: 12px 16px; border-radius: 4px; margin: 18px 0; }
+  figure { margin: 26px 0; }
+  figcaption { font-size: .9em; color: var(--muted-text); text-align: center; margin-top: 6px; }
+  svg.fig { width: 100%; height: auto; max-width: 760px; display: block; margin: 0 auto; }
+  table { border-collapse: collapse; width: 100%; margin: 14px 0; }
+  th, td { border: 1px solid var(--muted); padding: 7px 10px; text-align: left; vertical-align: top; }
+  th { background: var(--code-bg); color: var(--navy); }
+  details { background: var(--code-bg); border-radius: 6px; padding: 8px 14px; margin: 10px 0; }
+  summary { cursor: pointer; font-weight: bold; color: var(--navy); }
+  .nav { display: flex; justify-content: space-between; gap: 12px; margin-top: 40px; padding-top: 14px; border-top: 1px solid var(--muted); flex-wrap: wrap; }
+
+svg .box{fill:var(--code-bg);stroke:var(--navy);stroke-width:2}
+svg .box2{fill:var(--bg);stroke:var(--navy);stroke-width:2}
+svg .hl{fill:var(--hl-bg);stroke:var(--accent);stroke-width:2}
+svg .t{fill:var(--ink);font-family:Arial,Helvetica,sans-serif;font-size:14px}
+svg .tb{font-weight:bold}
+svg .ts{font-size:12px}
+svg .tl{font-size:16px}
+svg .tn{fill:var(--navy)}
+svg .ta{fill:var(--accent)}
+svg .tm{fill:var(--muted)}
+svg .ln{stroke:var(--navy);stroke-width:2.5;fill:none}
+svg .la{stroke:var(--accent);stroke-width:2.5;fill:none}
+svg .lg{stroke:var(--muted);stroke-width:1;fill:none;opacity:.55}
+svg .ax{stroke:var(--ink);stroke-width:1.5;fill:none}
+svg .fw{stroke:var(--navy);stroke-width:2.5;fill:none}
+svg .bw{stroke:var(--accent);stroke-width:2.5;fill:none}
+svg .dash{stroke-dasharray:6 4}
+svg .mN{fill:var(--navy)}
+svg .mA{fill:var(--accent)}
+svg .dotN{fill:var(--navy)}
+svg .dotA{fill:var(--accent)}
+svg .sqN{fill:var(--navy)}
+svg .sqA{fill:var(--accent)}
+svg .sqM{fill:var(--muted)}
+svg .tbg{fill:var(--bg);font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:bold}
+svg .node{fill:var(--bg);stroke:var(--navy);stroke-width:2}
+
+  @media (prefers-color-scheme: dark) {
+    :root { --navy:#8FB4F0;--ink:#E6E6E6;--bg:#14181F;--code-bg:#1E2530;--hl-bg:#3A2C12;--accent:#F0A040;--muted:#6B778C; --muted-text:#B5BCC8; --good:#66BB6A; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Module 10: Deploy and measure</h1>
+<p class="meta">Lecture notes with diagrams. Reading time: about 25 minutes. Read once, create your Hugging Face account, then start the notebook. Come back here when a self-check fails or a deployment step goes wrong.</p>
+
+<div class="toc"><strong>In these notes</strong>
+<ol>
+<li><a href="#big">The big picture</a></li>
+<li><a href="#api">APIs: how programs talk to your model</a></li>
+<li><a href="#fastapi">Building one with FastAPI</a></li>
+<li><a href="#deploy">Putting it online</a></li>
+<li><a href="#latency">Latency</a></li>
+<li><a href="#cost">Cost</a></li>
+<li><a href="#log">Logging and monitoring</a></li>
+<li><a href="#capstone">Your capstone idea</a></li>
+<li><a href="#terms">Key terms</a>, <a href="#pitfalls">pitfalls</a>, and <a href="#check">check yourself</a></li>
+</ol></div>
+
+<h2 id="big">1. The big picture</h2>
+<p>So far every model lived in a notebook: you ran a cell and saw an answer. A product is different. Strangers use it, at any hour, from their own devices, and they expect it to be quick. The step between those two worlds is <strong>deployment</strong>.</p>
+<figure>
+<svg class="fig" viewBox="0 0 760 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="From notebook to service: save the model, load it in an API server, and let web pages, apps and other services call it"><defs><marker id="aN101" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA101" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><rect x="8" y="90" width="130" height="64" rx="8" class="box2"/><text x="73.0" y="118.0" class="t tb" text-anchor="middle" >Notebook</text><text x="73.0" y="136.0" class="t ts" text-anchor="middle" >train the model</text><line x1="138" y1="122" x2="178" y2="122" class="fw" marker-end="url(#aN101)"/><text x="158" y="112" class="t ts tn" text-anchor="middle" >save</text><rect x="180" y="90" width="130" height="64" rx="8" class="box"/><text x="245.0" y="118.0" class="t tb" text-anchor="middle" >model.joblib</text><text x="245.0" y="136.0" class="t ts" text-anchor="middle" >a file</text><line x1="310" y1="122" x2="350" y2="122" class="fw" marker-end="url(#aN101)"/><text x="330" y="112" class="t ts tn" text-anchor="middle" >load</text><rect x="352" y="56" width="190" height="132" rx="8" class="hl"/><text x="447.0" y="100.0" class="t tb" text-anchor="middle" >API server</text><text x="447.0" y="118.0" class="t ts" text-anchor="middle" >FastAPI</text><text x="447.0" y="136.0" class="t ts" text-anchor="middle" >GET  /health</text><text x="447.0" y="154.0" class="t ts" text-anchor="middle" >POST /predict</text><rect x="600" y="30" width="150" height="52" rx="8" class="box2"/><text x="675.0" y="61.0" class="t tb" text-anchor="middle" >Web page</text><line x1="598" y1="56" x2="544" y2="122" class="fw" marker-end="url(#aN101)"/><rect x="600" y="100" width="150" height="52" rx="8" class="box2"/><text x="675.0" y="131.0" class="t tb" text-anchor="middle" >Mobile app</text><line x1="598" y1="126" x2="544" y2="122" class="fw" marker-end="url(#aN101)"/><rect x="600" y="170" width="150" height="52" rx="8" class="box2"/><text x="675.0" y="201.0" class="t tb" text-anchor="middle" >Other services</text><line x1="598" y1="196" x2="544" y2="122" class="fw" marker-end="url(#aN101)"/><text x="380" y="235" class="t tb" text-anchor="middle" >The model stays in one place. Any program that can send a web request can use it.</text><text x="380" y="258" class="t ts" text-anchor="middle" >Training happens once, in a notebook. Serving happens all day, in a server.</text></svg>
+<figcaption>Training happens once, in a notebook. Serving happens all day, in a server that loads the saved model and answers requests.</figcaption>
+</figure>
+<p>It also changes what you care about. In a notebook you ask <em>is the model accurate?</em> In production you also ask <em>is it fast, is it cheap, is it up, and is it safe with people's data?</em> This module teaches you to answer all four with numbers.</p>
+
+<h2 id="api">2. APIs: how programs talk to your model</h2>
+<p>An <strong>API</strong> is an agreement about how one program asks another for something. Over the web, the usual agreement is <strong>HTTP</strong>: the client sends a <strong>request</strong> to an address, and the server sends back a <strong>response</strong> with a <strong>status code</strong>.</p>
+<figure>
+<svg class="fig" viewBox="0 0 760 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A request with JSON in and a response with JSON out, and the meaning of the common status codes"><defs><marker id="aN102" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA102" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><text x="190" y="20" class="t tb tn" text-anchor="middle" >Request (what the client sends)</text><text x="570" y="20" class="t tb tn" text-anchor="middle" >Response (what the server returns)</text><rect x="10" y="34" width="360" height="118" rx="8" class="box"/><text x="26" y="62" class="t ts tb" text-anchor="start" >POST /predict</text><text x="26" y="86" class="t ts" text-anchor="start" >Content-Type: application/json</text><text x="26" y="110" class="t ts" text-anchor="start" ></text><text x="26" y="134" class="t ts" text-anchor="start" >{ "text": "our site is down" }</text><rect x="390" y="34" width="360" height="118" rx="8" class="hl"/><text x="406" y="58" class="t ts tb" text-anchor="start" >200 OK</text><text x="406" y="79" class="t ts" text-anchor="start" ></text><text x="406" y="100" class="t ts" text-anchor="start" >{ "label": "urgent",</text><text x="406" y="121" class="t ts" text-anchor="start" >  "score": 0.95,</text><text x="406" y="142" class="t ts" text-anchor="start" >  "latency_ms": 1.1 }</text><line x1="372" y1="93" x2="388" y2="93" class="fw" marker-end="url(#aN102)"/><text x="380" y="184" class="t tb tn" text-anchor="middle" >Status codes tell the client what happened</text><rect x="60" y="200" width="56" height="22" rx="4" class="sqN"/><text x="88" y="216" class="tbg" text-anchor="middle" >200</text><text x="130" y="216" class="t ts" text-anchor="start" >ok: here is your answer</text><rect x="60" y="228" width="56" height="22" rx="4" class="sqA"/><text x="88" y="244" class="tbg" text-anchor="middle" >422</text><text x="130" y="244" class="t ts" text-anchor="start" >the request is invalid: empty text, text too long, missing field</text><rect x="60" y="256" width="56" height="22" rx="4" class="sqA"/><text x="88" y="272" class="tbg" text-anchor="middle" >404</text><text x="130" y="272" class="t ts" text-anchor="start" >no such address</text><rect x="60" y="284" width="56" height="22" rx="4" class="sqM"/><text x="88" y="300" class="tbg" text-anchor="middle" >500</text><text x="130" y="300" class="t ts" text-anchor="start" >the server itself failed (a bug in your code)</text></svg>
+<figcaption>A request with JSON in, a response with JSON out, and a status code that tells the client what happened.</figcaption>
+</figure>
+<ul>
+<li><strong>JSON</strong> is the common text format for the data: <code>{"text": "..."}</code> in, <code>{"label": "urgent", "score": 0.95}</code> out.</li>
+<li><strong>GET</strong> asks for something (like <code>/health</code>). <strong>POST</strong> sends data to be processed (like <code>/predict</code>).</li>
+<li><strong>Status codes:</strong> 2xx means success, 4xx means the <em>client</em> made a mistake (for example 422 for invalid input), 5xx means the <em>server</em> failed. Using the right code lets callers react correctly.</li>
+</ul>
+
+<h2 id="fastapi">3. Building one with FastAPI</h2>
+<p><strong>FastAPI</strong> is a Python library that turns functions into endpoints. You write the function; it handles the web part. A few ideas matter:</p>
+<ul>
+<li><strong>Validate input at the door.</strong> The request body is described by a small class (<code>PredictRequest</code>), and FastAPI rejects a missing field automatically. You add the rest: reject empty or oversized text <em>before</em> the model runs. This protects the model and your bill.</li>
+<li><strong>A health endpoint.</strong> <code>GET /health</code> returns "ok" if the service is alive. Hosting platforms call it to decide whether to restart you.</li>
+<li><strong>Load once, serve many.</strong> The model is loaded when the server starts, not at every request. Loading is slow; predicting is fast.</li>
+<li><strong>Automatic documentation.</strong> FastAPI builds a documentation page at <code>/docs</code> from your code. Other developers can try your API from it.</li>
+<li><strong>Test without a server.</strong> A test client calls the app directly, so you can check good and bad requests in a second. You did exactly that in the self-check.</li>
+</ul>
+<div class="note"><strong>Never train inside the server.</strong> A service loads a saved model file and only predicts. If the model needs to change, you train elsewhere, save a new file, and redeploy.</div>
+
+<h2 id="deploy">4. Putting it online</h2>
+<p>An API is for programs. People need a <strong>web page</strong>. <strong>Gradio</strong> turns a Python function into one in a few lines (a text box in, a label out), and <strong>Hugging Face Spaces</strong> hosts it for free and gives it a public address.</p>
+<figure>
+<svg class="fig" viewBox="0 0 760 255" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three ways to deploy a model: a Hugging Face Space, a container on a cloud machine, and a managed endpoint"><defs><marker id="aN104" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA104" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><rect x="10" y="14" width="240" height="190" rx="8" class="hl"/><text x="130" y="42" class="t tb" text-anchor="middle" >Hugging Face Space</text><text x="130" y="62" class="t ts ta" text-anchor="middle" >demo and portfolio</text><text x="24" y="100" class="t ts" text-anchor="start" >- free, public address in minutes</text><text x="24" y="130" class="t ts" text-anchor="start" >- sleeps when nobody visits</text><text x="24" y="160" class="t ts" text-anchor="start" >- limited power, not for heavy traffic</text><rect x="260" y="14" width="240" height="190" rx="8" class="box"/><text x="380" y="42" class="t tb" text-anchor="middle" >A container on a cloud machine</text><text x="380" y="62" class="t ts ta" text-anchor="middle" >a real product</text><text x="274" y="100" class="t ts" text-anchor="start" >- you control size, security, scaling</text><text x="274" y="130" class="t ts" text-anchor="start" >- always on, pay by the hour</text><text x="274" y="160" class="t ts" text-anchor="start" >- you run and monitor it</text><rect x="510" y="14" width="240" height="190" rx="8" class="box"/><text x="630" y="42" class="t tb" text-anchor="middle" >A managed endpoint</text><text x="630" y="62" class="t ts ta" text-anchor="middle" >variable traffic</text><text x="524" y="100" class="t ts" text-anchor="start" >- scales up and down for you</text><text x="524" y="130" class="t ts" text-anchor="start" >- pay per use</text><text x="524" y="160" class="t ts" text-anchor="start" >- a slow first request after idle time</text><text x="380" y="235" class="t tb" text-anchor="middle" >Start with a Space to show it works. Move to a real machine when real users depend on it.</text></svg>
+<figcaption>Three common places to deploy. Start with the one that proves it works, and move when real users depend on it.</figcaption>
+</figure>
+<ul>
+<li>A Space needs three files: <code>app.py</code> (the page), <code>requirements.txt</code> (the libraries), and your <code>model.joblib</code>.</li>
+<li><strong>Pin library versions.</strong> A model saved with one scikit-learn version should be loaded with the same one. The notebook writes the pin for you.</li>
+<li>Free Spaces <strong>sleep</strong> when unused. The first visit after a sleep is slow.</li>
+<li><strong>Test as a stranger:</strong> open the address in a private window, and ask someone else to try it. "Works on my machine" is not deployed.</li>
+</ul>
+
+<h2 id="latency">5. Latency</h2>
+<p><strong>Latency</strong> is how long one request takes. Users feel it directly: under about 100 ms feels instant, around a second is noticeable, and several seconds loses people.</p>
+<figure>
+<svg class="fig" viewBox="0 0 760 316" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A latency histogram with markers for the median, the average, the 95th percentile and the maximum"><defs><marker id="aN103" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA103" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><text x="380" y="20" class="t tb tn" text-anchor="middle" >50 requests: most are quick, a few are slow (illustrative)</text><rect x="90" y="160" width="34" height="80" rx="2" class="sqN" style="opacity:.8"/><text x="107.0" y="256" class="t ts tm" text-anchor="middle" >3</text><rect x="128" y="60" width="34" height="180" rx="2" class="sqN" style="opacity:.8"/><text x="145.0" y="256" class="t ts tm" text-anchor="middle" >4</text><rect x="166" y="120" width="34" height="120" rx="2" class="sqN" style="opacity:.8"/><text x="183.0" y="256" class="t ts tm" text-anchor="middle" >5</text><rect x="204" y="180" width="34" height="60" rx="2" class="sqN" style="opacity:.8"/><text x="221.0" y="256" class="t ts tm" text-anchor="middle" >6</text><rect x="242" y="220" width="34" height="20" rx="2" class="sqN" style="opacity:.8"/><text x="259.0" y="256" class="t ts tm" text-anchor="middle" >7</text><rect x="280" y="230" width="34" height="10" rx="2" class="sqN" style="opacity:.8"/><text x="297.0" y="256" class="t ts tm" text-anchor="middle" >8</text><rect x="318" y="240" width="34" height="0" rx="2" class="sqN" style="opacity:.8"/><text x="335.0" y="256" class="t ts tm" text-anchor="middle" >9</text><rect x="356" y="240" width="34" height="0" rx="2" class="sqN" style="opacity:.8"/><text x="373.0" y="256" class="t ts tm" text-anchor="middle" >10</text><rect x="394" y="230" width="34" height="10" rx="2" class="sqN" style="opacity:.8"/><text x="411.0" y="256" class="t ts tm" text-anchor="middle" >11</text><rect x="432" y="240" width="34" height="0" rx="2" class="sqN" style="opacity:.8"/><text x="449.0" y="256" class="t ts tm" text-anchor="middle" >12</text><rect x="470" y="240" width="34" height="0" rx="2" class="sqN" style="opacity:.8"/><text x="487.0" y="256" class="t ts tm" text-anchor="middle" >13</text><rect x="508" y="230" width="34" height="10" rx="2" class="sqN" style="opacity:.8"/><text x="525.0" y="256" class="t ts tm" text-anchor="middle" >14</text><rect x="546" y="230" width="34" height="10" rx="2" class="sqN" style="opacity:.8"/><text x="563.0" y="256" class="t ts tm" text-anchor="middle" >15</text><text x="318" y="276" class="t ts tm" text-anchor="middle" >latency in milliseconds</text><line x1="164.0" y1="66" x2="164.0" y2="240" class="lg dash" style="opacity:1"/><text x="164.0" y="56" class="t ts tb ta" text-anchor="middle" >p50</text><line x1="198.2" y1="94" x2="198.2" y2="240" class="lg dash" style="opacity:1"/><text x="198.20000000000002" y="84" class="t ts tb" text-anchor="middle" >avg</text><line x1="304.6" y1="66" x2="304.6" y2="240" class="lg dash" style="opacity:1"/><text x="304.59999999999997" y="56" class="t ts tb ta" text-anchor="middle" >p95</text><line x1="563.0" y1="66" x2="563.0" y2="240" class="lg dash" style="opacity:1"/><text x="563.0" y="56" class="t ts tb" text-anchor="middle" >max</text><text x="380" y="296" class="t ts tb" text-anchor="middle" >The average looks fine. The tail is what a user remembers: 1 request in 20 is slower than the p95.</text></svg>
+<figcaption>Most requests are fast and a few are slow. The average sits among the fast ones and hides the tail.</figcaption>
+</figure>
+<ul>
+<li>The <strong>average</strong> mixes everything together and understates the slow requests.</li>
+<li>The <strong>median (p50)</strong>: half of the requests are faster than this.</li>
+<li>The <strong>95th percentile (p95)</strong>: 95 of every 100 requests finish within this time. One in 20 is slower. Products usually set their goals in p95 or p99.</li>
+<li><strong>Measure what the user feels</strong> (the whole round trip, from the client) <strong>and</strong> what the model contributes (timed inside the server). The gap is the network, the data conversion and the web server, which you may be able to reduce in a different way from the model.</li>
+</ul>
+<p><strong>Ways to make it faster:</strong> a smaller or faster model; <strong>caching</strong> repeated inputs; <strong>batching</strong> several inputs into one call to the model; shorter inputs; running close to your users; keeping the model loaded (avoiding a slow <em>cold start</em>).</p>
+
+<h2 id="cost">6. Cost</h2>
+<p>A server costs money <strong>whether or not anyone calls it</strong>: you rent the machine by the hour. So the cost of one request depends on three things:</p>
+<pre><code>capacity            = workers / seconds_per_request          (requests per second)
+cost per request    = seconds_per_request / 3600 x dollars_per_hour / utilization
+monthly cost        = requests_per_day x 30 x cost_per_request + fixed costs</code></pre>
+<figure>
+<svg class="fig" viewBox="0 0 760 335" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Cost per thousand requests falls as the machine becomes busier"><defs><marker id="aN105" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA105" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><line x1="90" y1="250" x2="700" y2="250" class="ax"/><line x1="90" y1="250" x2="90" y2="50" class="ax"/><line x1="90" y1="183.33333333333331" x2="700" y2="183.33333333333331" class="lg"/><text x="82" y="187.33333333333331" class="t ts tm" text-anchor="end" >$0.05</text><line x1="90" y1="116.66666666666666" x2="700" y2="116.66666666666666" class="lg"/><text x="82" y="120.66666666666666" class="t ts tm" text-anchor="end" >$0.10</text><line x1="90" y1="50.0" x2="700" y2="50.0" class="lg"/><text x="82" y="54.0" class="t ts tm" text-anchor="end" >$0.15</text><text x="122.10526315789474" y="268" class="t ts tm" text-anchor="middle" >10%</text><text x="218.42105263157896" y="268" class="t ts tm" text-anchor="middle" >25%</text><text x="378.94736842105266" y="268" class="t ts tm" text-anchor="middle" >50%</text><text x="539.4736842105264" y="268" class="t ts tm" text-anchor="middle" >75%</text><text x="700.0" y="268" class="t ts tm" text-anchor="middle" >100%</text><path d="M90.0,64.8 L122.1,157.4 L154.2,188.3 L186.3,203.7 L218.4,213.0 L250.5,219.1 L282.6,223.5 L314.7,226.9 L346.8,229.4 L378.9,231.5 L411.1,233.2 L443.2,234.6 L475.3,235.8 L507.4,236.8 L539.5,237.7 L571.6,238.4 L603.7,239.1 L635.8,239.7 L667.9,240.3 L700.0,240.7" class="la"/><circle cx="90.0" cy="64.8" r="5" class="dotA"/><text x="100.0" y="56.81481481481484" class="t ts tb" text-anchor="start" >$0.139</text><circle cx="218.4" cy="213.0" r="5" class="dotA"/><text x="228.42105263157896" y="204.96296296296296" class="t ts tb" text-anchor="start" >$0.028</text><circle cx="378.9" cy="231.5" r="5" class="dotA"/><text x="388.94736842105266" y="223.48148148148147" class="t ts tb" text-anchor="start" >$0.014</text><circle cx="635.8" cy="239.7" r="5" class="dotA"/><text x="645.7894736842105" y="231.7119341563786" class="t ts tb" text-anchor="start" >$0.008</text><text x="390" y="290" class="t ts tm" text-anchor="middle" >how busy the machine is (utilization)</text><text x="380" y="22" class="t tb tn" text-anchor="middle" >Cost per 1,000 requests: 50 ms per request on a $0.50 per hour machine</text><text x="380" y="318" class="t ts tb" text-anchor="middle" >An idle machine still costs money, so a quiet service is expensive per request.</text></svg>
+<figcaption>The same service costs very different amounts per request depending on how busy the machine is.</figcaption>
+</figure>
+<ul>
+<li><strong>Utilization</strong> is the share of the time that the machine is busy. At 5% busy, each request carries the cost of the 95% idle time, so it is 18 times as expensive as at 90% busy.</li>
+<li>That is why <strong>low-traffic services are expensive per request</strong>, and why pay-per-use options can beat a rented machine until your traffic grows.</li>
+<li><strong>Capacity planning:</strong> if the peak is 150 requests per second and one worker handles 40, you need at least 4 workers, and in practice more, because you want headroom (plan for 60 to 70% of capacity at the peak).</li>
+</ul>
+<p>The prices in the notebook are placeholders. Look up real prices before you show a number to anyone.</p>
+
+<h2 id="log">7. Logging and monitoring</h2>
+<p>Once your service is live you cannot watch it. <strong>Logs</strong> are how you see what it is doing: how many requests, how fast, what labels, how many were rejected. They let you debug failures and notice changes (a rise in latency, more errors, a shift in the labels that may mean that the world changed).</p>
+<figure>
+<svg class="fig" viewBox="0 0 760 305" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="What to log (time, length, hash, label, score, latency) and what never to log (raw text, personal data, secrets)"><defs><marker id="aN106" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mN"/></marker><marker id="aA106" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="mA"/></marker></defs><rect x="10" y="14" width="360" height="222" rx="8" class="box"/><text x="190" y="40" class="t tb tn" text-anchor="middle" >Log this</text><circle cx="34" cy="74" r="5" class="sqN"/><text x="48" y="79" class="t ts" text-anchor="start" >when it happened (timestamp)</text><circle cx="34" cy="104" r="5" class="sqN"/><text x="48" y="109" class="t ts" text-anchor="start" >how long the input was (characters)</text><circle cx="34" cy="134" r="5" class="sqN"/><text x="48" y="139" class="t ts" text-anchor="start" >a short hash of the input</text><circle cx="34" cy="164" r="5" class="sqN"/><text x="48" y="169" class="t ts" text-anchor="start" >the predicted label and score</text><circle cx="34" cy="194" r="5" class="sqN"/><text x="48" y="199" class="t ts" text-anchor="start" >how long it took (latency)</text><rect x="390" y="14" width="360" height="222" rx="8" class="hl"/><text x="570" y="40" class="t tb ta" text-anchor="middle" >Never log (unless you must)</text><circle cx="414" cy="74" r="5" class="sqA"/><text x="428" y="79" class="t ts" text-anchor="start" >the raw text users typed</text><circle cx="414" cy="104" r="5" class="sqA"/><text x="428" y="109" class="t ts" text-anchor="start" >names, emails, phone numbers</text><circle cx="414" cy="134" r="5" class="sqA"/><text x="428" y="139" class="t ts" text-anchor="start" >passwords, tokens, API keys</text><circle cx="414" cy="164" r="5" class="sqA"/><text x="428" y="169" class="t ts" text-anchor="start" >anything you promised not to keep</text><text x="380" y="266" class="t ts" text-anchor="middle" >A hash lets you spot repeated inputs and compare traffic over time, without keeping the content.</text><text x="380" y="288" class="t ts tb" text-anchor="middle" >Watch the logs: rising latency, more rejected requests, or a shift in labels can mean trouble.</text></svg>
+<figcaption>Log facts about requests, not their content.</figcaption>
+</figure>
+<p>User text is often private: names, passwords, health details. Keeping it creates a risk (a leak) and an obligation (privacy rules). So log <strong>facts</strong>: a timestamp, the length, a short hash (to spot repeated inputs), the result and the latency. If you really must keep inputs to improve the model, do it deliberately, with consent, secure storage and a deletion plan.</p>
+
+<h2 id="capstone">8. Your capstone idea</h2>
+<p>In Modules 11 and 12 you build and ship your own prototype. A good idea fits on one page and answers six questions:</p>
+<ol>
+<li><strong>Problem:</strong> whose problem, and how painful is it today?</li>
+<li><strong>User:</strong> who exactly, and how will they use it?</li>
+<li><strong>Why deep learning:</strong> what simpler approach (rules, search, a spreadsheet) would you try first, and why might it fall short? If a simple method works, use it.</li>
+<li><strong>Data:</strong> where does it come from, who labels it, and how will you keep a fixed test set?</li>
+<li><strong>Success metric:</strong> a number on your test set that means "good enough", plus a speed or cost limit if it matters.</li>
+<li><strong>Risks:</strong> wrong answers, unequal performance, privacy, cost.</li>
+</ol>
+<p>Pick something you can finish in a few weeks, with data you can actually get. A small idea that works beats a big one that does not.</p>
+
+<h2 id="terms">9. Key terms</h2>
+<table>
+<tr><th>Term</th><th>Plain meaning</th></tr>
+<tr><td>API</td><td>An agreed way for one program to ask another for something</td></tr>
+<tr><td>Endpoint</td><td>One address of an API, such as <code>/predict</code></td></tr>
+<tr><td>JSON</td><td>A text format for structured data</td></tr>
+<tr><td>Status code</td><td>A number that says how a request went (200 ok, 422 bad input, 500 server error)</td></tr>
+<tr><td>Latency</td><td>The time one request takes</td></tr>
+<tr><td>p95</td><td>The time within which 95% of requests finish</td></tr>
+<tr><td>Utilization</td><td>The share of time a machine is busy</td></tr>
+<tr><td>Cold start</td><td>A slow first request after a service has been idle</td></tr>
+<tr><td>Caching</td><td>Remembering answers so that repeated inputs are not recomputed</td></tr>
+<tr><td>Hash</td><td>A short code computed from data, used to compare without keeping the data</td></tr>
+</table>
+
+<h2 id="pitfalls">10. Common pitfalls</h2>
+<ul>
+<li>Checking input after calling the model, instead of before.</li>
+<li>Reporting only the average latency.</li>
+<li>Counting only the busy time in the cost and forgetting the idle time.</li>
+<li>Logging the private content of requests.</li>
+<li>Loading or training the model at every request.</li>
+<li>Not pinning library versions, so the model will not load in production.</li>
+<li>Declaring it "deployed" without testing it as a stranger would.</li>
+</ul>
+
+<h2 id="check">11. Check yourself</h2>
+<p>Try each question first, then open the answer.</p>
+<details><summary>Question 1: Over 1,000 requests, the p50 is 40 ms and the p95 is 400 ms. What does this mean for users, and what would you do?</summary><p>Half of the requests take 40 ms or less, but 1 request in 20 (50 of the 1,000) takes 400 ms or more, ten times slower. The average would look fine and hide this. Look at what the slow requests have in common: unusually long inputs, a cold start after idle time, heavy load at that moment, or a slow dependency. Fix the cause of the tail rather than the typical case.</p></details>
+<details><summary>Question 2: A model takes 50 ms per request on a machine that costs 0.20 dollars per hour and is busy 25% of the time. What is the cost per request, and per 1,000 requests?</summary><p>Busy-time cost: 0.05 / 3600 x 0.20 = 0.0000027778 dollars. Divide by the utilization 0.25: <strong>0.0000111 dollars per request</strong>. Per 1,000 requests that is about <strong>0.0111 dollars</strong> (1.1 cents).</p></details>
+<details><summary>Question 3: Peak traffic is 150 requests per second and one worker handles 40 per second. How many workers do you need?</summary><p>150 / 40 = 3.75, so at least <strong>4 workers</strong> just to keep up at the peak. That leaves no headroom, so a realistic plan aims for 60 to 70% of capacity at the peak: 150 / (40 x 0.7) = 5.4, so about <strong>6 workers</strong>.</p></details>
+
+<h2>Next steps</h2>
+<ul>
+<li>Open the <a href="https://colab.research.google.com/github/panchadk/AIStartup/blob/main/module10_deploy_and_measure.ipynb" target="_blank" rel="noopener">Module 10 notebook in Colab</a> and start building.</li>
+<li>Back to the <a href="https://panchadk.github.io/AIStartup/module10_page.html">Module 10 page</a>.</li>
+</ul>
+<div class="nav"><a href="https://panchadk.github.io/AIStartup/module9_notes.html">&larr; Previous: Module 9 notes</a><span></span></div>
+
+</body>
+</html>

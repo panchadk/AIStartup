@@ -1,0 +1,51 @@
+<h3>Module 10: Deploy and measure</h3>
+<p><strong>Project:</strong> take a trained model out of the notebook and turn it into a service: an API that other programs can call, and a web page that anyone can use. Then measure how fast and how expensive it is, and write the one-page idea for your capstone. <strong>Time:</strong> about 8 hours core, plus about 4 hours for the stretch challenge.</p>
+<p><strong>Done when:</strong> your model runs behind a FastAPI endpoint that you tested with real requests, including bad ones; it is online as a public web page on Hugging Face Spaces that someone else can open; you documented the latency (average and 95th percentile over 50 requests) and the cost per request; and you wrote your capstone idea.</p>
+<p><a href="https://colab.research.google.com/github/panchadk/AIStartup/blob/main/module10_deploy_and_measure.ipynb" target="_blank" rel="noopener"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"></a></p>
+<p><em>Click the button to open the interactive notebook in Google Colab. Then choose File, Save a copy in Drive, and work in your own copy. A free CPU runtime is enough.</em></p>
+
+<p><strong>Lecture notes:</strong> <a href="https://panchadk.github.io/AIStartup/module10_notes.html" target="_blank" rel="noopener">read the illustrated notes</a> (about 25 minutes, with diagrams). Read them first, or return to them when you are stuck.</p>
+
+<h4>Before you start</h4>
+<ul>
+<li><strong>Which model?</strong> The notebook serves the ticket-urgency classifier from Module 9. You can serve any model you built in this course: replace the <code>predict</code> function and the rest stays the same.</li>
+<li><strong>Accounts.</strong> You need a free account at huggingface.co to create a Space (Step 7). Create it before you start.</li>
+</ul>
+
+<h4>Notes (about 10 minutes)</h4>
+<ul>
+<li>A model in a notebook is not a product. Wrap it in an <strong>API</strong> (FastAPI) so that any application can call it.</li>
+<li><strong>Gradio</strong> or Streamlit give a quick web page, and <strong>Hugging Face Spaces</strong> can host it for free with a public address.</li>
+<li>Measure <strong>latency</strong> with percentiles, not just the average. The 95th percentile (p95) is the time under which 95% of requests finish.</li>
+<li><strong>Cost per request</strong> depends on how long a request takes, the price of the machine, and how busy the machine is.</li>
+<li>Reduce cost and latency with a smaller model, caching repeated requests, batching, and shorter inputs.</li>
+<li><strong>Log</strong> what you need to monitor the service, but never the private content of the requests.</li>
+</ul>
+
+<h4>Exercises (all in the notebook)</h4>
+<ol>
+<li><strong>Save and load the model</strong> and write a <code>predict</code> function.</li>
+<li><strong>Privacy-safe logging.</strong> Write <code>make_log_record()</code>.</li>
+<li><strong>The API.</strong> Write <code>create_app()</code> with <code>/health</code> and <code>/predict</code>, and reject bad requests.</li>
+<li><strong>Run it as a server</strong> and call it with real requests.</li>
+<li><strong>Measure latency</strong> over 50 requests. Write <code>summarize_latencies()</code> with the average, p50, p95 and p99.</li>
+<li><strong>Cost.</strong> Write the capacity, cost per request and monthly cost formulas.</li>
+<li><strong>Deploy to Hugging Face Spaces</strong> and check that the public URL works for someone else.</li>
+<li><strong>Write your capstone idea</strong>: problem, user, why deep learning, data, success metric, risks.</li>
+<li><strong>Stretch:</strong> add caching and a load test, and measure again.</li>
+</ol>
+
+<h4>Hint ladder</h4>
+<ol>
+<li>The FastAPI documentation and a web search.</li>
+<li>The written hints under each step in the notebook.</li>
+<li>If a self-check fails, read its message: each one names the most likely mistake.</li>
+<li>Reference solution: open <a href="https://panchadk.github.io/AIStartup/module10_solution.html" target="_blank" rel="noopener">the solution page</a> only after your own honest attempt.</li>
+</ol>
+
+<h4>Before you submit</h4>
+<ul>
+<li>Every self-check cell passes, including the public URL check, and you wrote your answers.</li>
+<li>Take the Module 10 quiz (pass mark 4 of 5).</li>
+<li>Push the notebook, <code>deployment.json</code> and <code>space/app.py</code>, with a three-line reflection (what you deployed and your URL, your p95 and cost per 1,000 requests, the change that would help most), to <code>module-10</code> in your portfolio repo. Do not push private data or keys. Then submit the link in the assignment below.</li>
+</ul>

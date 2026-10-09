@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Module 10: Reference solution</title>
+<style>
+  :root { --navy: #1F3864; --ink: #222222; --bg: #FFFFFF; --code-bg: #F3F6FA; --warn-bg: #FFF4E5; --warn-edge: #E08A00; }
+  body { font-family: Arial, Helvetica, sans-serif; max-width: 860px; margin: 0 auto; padding: 24px; line-height: 1.6; color: var(--ink); background: var(--bg); }
+  h3 { color: var(--navy); border-bottom: 3px solid var(--navy); padding-bottom: 6px; }
+  h4 { color: var(--navy); margin-top: 28px; }
+  strong { color: var(--navy); }
+  code { font-family: Consolas, "Courier New", monospace; background: var(--code-bg); padding: 1px 4px; border-radius: 3px; }
+  pre { background: var(--code-bg); border-left: 4px solid var(--navy); padding: 14px; overflow-x: auto; border-radius: 4px; }
+  pre code { background: none; padding: 0; }
+  .banner { background: var(--warn-bg); border-left: 4px solid var(--warn-edge); padding: 12px 16px; border-radius: 4px; margin: 16px 0; }
+  @media (prefers-color-scheme: dark) {
+    :root { --navy: #8FB4F0; --ink: #E6E6E6; --bg: #14181F; --code-bg: #1E2530; --warn-bg: #3A2C12; --warn-edge: #E0A040; }
+  }
+</style>
+</head>
+<body>
+<h3>Module 10: Reference solution</h3>
+<div class="banner"><strong>Try it yourself first.</strong> Open this page only after your own honest attempt. If a self-check is failing, read its message again and compare one function at a time. Matching line for line is not required: if every self-check passes, your solution is correct.</div>
+<h4>Step 2: a privacy-safe log record</h4>
+<p>Every field is a <em>fact about</em> the request, not its content. The short hash lets you notice that the same input arrived twice, or compare the traffic of two weeks, without keeping what people typed.</p>
+<pre><code>def make_log_record(text, label, score, latency_ms):
+    return {&quot;ts&quot;: datetime.now(timezone.utc).isoformat(timespec=&quot;seconds&quot;),
+            &quot;input_chars&quot;: len(text),
+            &quot;input_sha256&quot;: hashlib.sha256(text.encode(&quot;utf-8&quot;)).hexdigest()[:12],
+            &quot;label&quot;: label, &quot;score&quot;: round(float(score), 4), &quot;latency_ms&quot;: round(float(latency_ms), 2)}</code></pre>
+<h4>Step 3: the API</h4>
+<p>Three details matter. Invalid input is rejected with a 4xx status <em>before</em> the model runs, so bad requests cost nothing and cannot crash it. Only the model call is timed, so the latency you report is the model's. And logging happens after a successful prediction, so rejected requests never reach the log.</p>
+<pre><code>class PredictRequest(BaseModel):
+    text: str
+
+def create_app(predict_fn, log_fn=None):
+    app = FastAPI(title=&quot;Ticket urgency API&quot;)
+
+    @app.get(&quot;/health&quot;)
+    def health():
+        return {&quot;status&quot;: &quot;ok&quot;}
+
+    @app.post(&quot;/predict&quot;)
+    def predict_endpoint(req: PredictRequest):
+        text = req.text.strip()
+        if not text or len(text) &gt; 2000:
+            raise HTTPException(status_code=422, detail=&quot;text must be between 1 and 2000 characters&quot;)
+        t0 = time.perf_counter()
+        label, score = predict_fn(text)
+        latency_ms = (time.perf_counter() - t0) * 1000
+        if log_fn is not None:
+            log_fn(make_log_record(text, label, score, latency_ms))
+        return {&quot;label&quot;: label, &quot;score&quot;: float(score), &quot;latency_ms&quot;: latency_ms}
+
+    return app</code></pre>
+<h4>Step 5: latency summary</h4>
+<p><code>np.percentile</code> interpolates between measurements, which is the usual convention. A list of 95 fast requests and 5 slow ones has a small average and a large tail, which is exactly why you report percentiles.</p>
+<pre><code>def summarize_latencies(latencies_ms):
+    a = np.asarray(latencies_ms, dtype=float)
+    return {&quot;n&quot;: int(len(a)), &quot;avg&quot;: float(a.mean()), &quot;p50&quot;: float(np.percentile(a, 50)), &quot;p95&quot;: float(np.percentile(a, 95)),
+            &quot;p99&quot;: float(np.percentile(a, 99)), &quot;max&quot;: float(a.max())}</code></pre>
+<h4>Step 6: capacity and cost</h4>
+<p>Capacity is the inverse of latency, times the workers. The cost of one request is the busy-time cost divided by utilization, because you pay for the idle time too: at 10% busy, each request carries the cost of the 90% of the time the machine waited.</p>
+<pre><code>def requests_per_second_capacity(avg_latency_s, workers=1):
+    return workers / avg_latency_s
+
+def cost_per_request(avg_latency_s, instance_dollars_per_hour, utilization):
+    return avg_latency_s / 3600 * instance_dollars_per_hour / utilization
+
+def monthly_cost(requests_per_day, cost_per_request_dollars, fixed_monthly=0.0):
+    return requests_per_day * 30 * cost_per_request_dollars + fixed_monthly</code></pre>
+<h4>If your Space does not work</h4>
+<ol>
+<li><strong>It says "Building" for a long time.</strong> Wait a few minutes, then open the <em>Logs</em> tab: a missing or misspelled library in <code>requirements.txt</code> shows up there.</li>
+<li><strong>A "runtime error" about a file.</strong> <code>app.py</code>, <code>requirements.txt</code> and <code>model.joblib</code> must all be at the top level of the Space, not inside a folder. Check the exact file names.</li>
+<li><strong>A warning or error about the scikit-learn version.</strong> A model saved with one version should be loaded by the same version. The notebook pins it in <code>requirements.txt</code> (<code>scikit-learn==...</code>). If you edited the file, restore the pin.</li>
+<li><strong>The page loads but the answer is wrong or empty.</strong> Try the same text in the notebook with <code>predict</code>. If the notebook works and the Space does not, the saved model file is probably an old version: upload <code>model.joblib</code> again.</li>
+<li><strong>The Space is "sleeping".</strong> Free Spaces sleep when nobody visits. Open the address and wait for it to wake up. The first request after a sleep is slow, which is normal.</li>
+<li><strong>Your friend sees "private" or an error.</strong> Open <em>Settings</em> and set the Space to <em>Public</em>.</li>
+</ol>
+
+<h4>A sample capstone one-pager</h4>
+<ul>
+<li><strong>Problem:</strong> small online shops get hundreds of support tickets a day. The few that are truly urgent are buried among questions and thanks, and owners find them hours late.</li>
+<li><strong>User:</strong> the shop owner or support lead, who gets a ranked list inside the helpdesk they already use, through an API that is called whenever a ticket arrives.</li>
+<li><strong>Why deep learning:</strong> a keyword rule misses chat-style messages and wrongly flags polite thanks. I will measure a rules baseline first. A learned model reads the whole message and can be retrained as customers change how they write.</li>
+<li><strong>Data:</strong> anonymized, labeled tickets from three pilot shops, with a written labeling guide and a fixed test set stamped with a fingerprint.</li>
+<li><strong>Success metric:</strong> recall of urgent tickets of at least 90% with precision of at least 70% on the fixed test set, p95 latency under 300 ms, and compute under 20 dollars a month at 10,000 tickets a day.</li>
+<li><strong>Risks:</strong> missed urgent tickets (so the threshold favours recall), a gap between channels (so check slices), and private data in tickets (so log only hashes and lengths).</li>
+</ul>
+<p>What makes it a good one-pager: a specific user, a baseline that you will beat, a metric with a number on a test set you control, and an honest list of risks.</p>
+
+<h4>Sample answers to the written questions</h4>
+<ul>
+<li><strong>Model versus everything else:</strong> for a small model like this one, the model itself takes about a millisecond, and the round trip (network, JSON, web server) takes a few times that. So if you needed it faster, optimizing the model would gain almost nothing: look at the network, the number of calls, or batching instead. For a large model the picture reverses, and the model dominates.</li>
+<li><strong>Cost at low traffic:</strong> the cost is almost entirely the machine being on, not your requests. That is why utilization matters more than the model speed here, and why a serverless option (pay per use) can win at low volume.</li>
+<li><strong>When to add a machine:</strong> when the peak requests per second get close to the capacity (leave headroom, for example plan for 60 to 70% of capacity), or when the p95 latency starts to rise under load.</li>
+<li><strong>Caching:</strong> repeated inputs become near-instant, so p50 and p95 drop when traffic repeats. The risks: after you update the model, cached answers are stale (clear the cache on deploy), and cached text sits in memory (cache a hash, or limit the size and time).</li>
+</ul>
+
+<h4>Common mistakes and what they look like</h4>
+<ul>
+<li><strong>Validating after calling the model:</strong> bad requests reach the model, waste compute, and can crash it. Reject first.</li>
+<li><strong>Latency reported in seconds, or timing more than the model:</strong> numbers that cannot be compared. Report milliseconds and say what you timed.</li>
+<li><strong>Judging speed by the average only:</strong> the tail hides. Always report p95.</li>
+<li><strong>Logging the raw text:</strong> a privacy problem waiting to happen. Log lengths and hashes.</li>
+<li><strong>Training inside the server:</strong> a service loads a saved model and never trains while serving.</li>
+<li><strong>Ignoring idle time in the cost:</strong> the cost per request looks tiny, but the machine is paid for all day.</li>
+<li><strong>Testing the Space only from your own browser:</strong> you may be logged in. Open it in a private window, and ask someone else.</li>
+<li><strong>Putting keys or private data in the repository:</strong> keep both out of Git.</li>
+</ul>
+
+<h4>What to do next</h4>
+<ul>
+<li>Complete the three-line reflection and push your notebook, <code>deployment.json</code> and <code>space/app.py</code> to your portfolio repo.</li>
+<li>Take the Module 10 quiz in Moodle.</li>
+<li>Modules 11 and 12 are the capstone: you will build and ship your own AI startup prototype, using every tool from this course. Your one-pager from this module is the starting point.</li>
+</ul>
+
+</body>
+</html>

@@ -1,0 +1,37 @@
+// Module 10 quiz - Deep Learning for AI Startups
+$CATEGORY: $course$/Module 10
+
+::M10 Q1:: Why wrap a model in an API? {
+~To make it more accurate
+~To remove the need for data
+=So other applications can call it#An API lets any program send a request over the network and get the model's answer back.
+~To shrink the weights
+}
+
+::M10 Q2:: What does 95th percentile latency tell you? {
+~The average time
+=The time under which 95% of requests complete#One request in twenty is slower than this, so it shows the slow tail that users notice.
+~The fastest request
+~The number of users
+}
+
+::M10 Q3:: Which can reduce inference cost? {
+~Sending longer prompts
+~Using a larger model for every task
+~Disabling logging only
+=Caching repeated requests#A repeated input is answered from memory instead of being computed again, which saves time and compute.
+}
+
+::M10 Q4:: Why log inputs and outputs in production? {
+=To monitor quality and debug problems, while respecting privacy#Logs show how the service behaves and where it fails, but private content should be hashed, shortened or left out.
+~To slow the system
+~To change the model weights directly
+~To avoid testing
+}
+
+::M10 Q5:: Which tool is a quick way to build a web UI for a model demo? {
+~A spreadsheet macro
+~A compiler flag
+=Gradio#Gradio turns a Python function into a web page in a few lines, and works with Hugging Face Spaces.
+~A label editor
+}

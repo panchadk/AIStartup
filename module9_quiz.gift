@@ -1,0 +1,37 @@
+// Module 9 quiz - Deep Learning for AI Startups
+$CATEGORY: $course$/Module 9
+
+::M9 Q1:: Why can accuracy be misleading? {
+~It cannot be computed
+~It ignores the model
+~It only works for images
+=On imbalanced data, a model can score high by always predicting the common class#If 90% of items are normal, a model that always says normal is 90% accurate and finds nothing.
+}
+
+::M9 Q2:: What does low agreement between two labelers suggest? {
+=Labeling guidelines are unclear#When careful people disagree, the rules for deciding are missing or vague. Fix the guide before the model.
+~The model is perfect
+~The dataset is too clean
+~The GPU is faulty
+}
+
+::M9 Q3:: Why keep a fixed test set that is never trained on? {
+~To make training faster
+~To increase dataset size
+=For an honest, comparable measure of performance over time#If the test set never changes and is never trained on, scores from different weeks and different models can be compared fairly.
+~To avoid writing code
+}
+
+::M9 Q4:: What is the purpose of failure analysis? {
+~Hide mistakes
+=Find the biggest categories of error and prioritize fixes#Counting errors by cause shows where a fix pays off most.
+~Reduce the dataset
+~Choose a font
+}
+
+::M9 Q5:: Which metric matters most when missing a positive case is very costly? {
+~Training time
+~Parameter count
+~Batch size
+=Recall#Recall is the share of real positives that the model finds, so it falls when positives are missed.
+}
